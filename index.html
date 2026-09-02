@@ -471,7 +471,7 @@
         <!-- CURRENTLY BUILDING -->
         <section class="view" data-view="building" hidden>
           <div class="build-bar">
-            <div class="bb-left"></div>
+            <div class="bb-left"><label class="preview-wrap">Sort <select id="sortSel" class="preview-as" onchange="setSort(this.value)"><option value="manual">Manual</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="due">Due date</option></select></label></div>
             <div class="build-actions">
               <button class="mini-btn" onclick="openActivity()">🕑 Activity</button>
             </div>
@@ -719,6 +719,16 @@
   let projEditId=null, projAddFor=null, skipProjBlur=false, projDelId=null;
   const doneOpen = new Set();
   const projOpen = new Set();
+  let sortMode = (function(){ try{ return localStorage.getItem('zaha_sort')||'manual'; }catch(e){ return 'manual'; } })();
+  function sortTasks(arr){
+    const a=arr.slice();
+    if(sortMode==='newest') a.sort((x,y)=>y.createdAt-x.createdAt);
+    else if(sortMode==='oldest') a.sort((x,y)=>x.createdAt-y.createdAt);
+    else if(sortMode==='due') a.sort((x,y)=>{ const dx=x.due?new Date(x.due+'T00:00:00').getTime():Infinity, dy=y.due?new Date(y.due+'T00:00:00').getTime():Infinity; return dx-dy || (x.order??0)-(y.order??0); });
+    else a.sort((x,y)=>(x.order??0)-(y.order??0)); // manual
+    return a;
+  }
+  function setSort(v){ sortMode=v; try{ localStorage.setItem('zaha_sort',v); }catch(e){} renderBoard(); }
 
   function loadB(){
     try{
@@ -937,6 +947,7 @@
     document.getElementById('login').style.display='none';
     document.getElementById('app').hidden=false;
     show('building');
+    const ss=document.getElementById('sortSel'); if(ss) ss.value=sortMode;
     renderBoard(); renderActivity();
     subscribeRealtime();
   }
@@ -1024,6 +1035,7 @@
     if(B.tasks.some(x=>x.id===entry.snapshot.id)){ entry.restored=true; saveB(); renderActivity(); return; }
     const t=JSON.parse(JSON.stringify(entry.snapshot));
     if(!Array.isArray(t.subs)) t.subs=[]; if(t.due===undefined) t.due=null;
+    if(t.projectId && !B.projects.some(p=>p.id===t.projectId)) t.projectId=null; // its project was deleted -> restore into Quick tasks
     B.tasks.push(t); entry.restored=true; logB('restored',t);
     saveB(); renderBoard(); renderActivity();
   }
@@ -1098,13 +1110,16 @@
   }
   function deleteProjectAll(id){
     const p=B.projects.find(x=>x.id===id); if(!p) return;
-    const removed=B.tasks.filter(t=>t.projectId===id).map(t=>JSON.parse(JSON.stringify(t)));
+    const removed=B.tasks.filter(t=>t.projectId===id);
+    const copies=removed.map(t=>JSON.parse(JSON.stringify(t)));
+    // log each deleted task with its own snapshot so every one is individually restorable from Activity
+    removed.forEach(t=>{ logB('deleted',t); const e=B.activity[0]; if(e) e.snapshot=JSON.parse(JSON.stringify(t)); });
     B.tasks=B.tasks.filter(t=>t.projectId!==id);
     B.projects=B.projects.filter(x=>x.id!==id); projDelId=null;
-    logB('proj_delete',{text:p.name,owner:p.owner}, removed.length?('· '+removed.length+' task'+(removed.length>1?'s':'')+' deleted'):'');
+    logB('proj_delete',{text:p.name,owner:p.owner}, copies.length?('· '+copies.length+' task'+(copies.length>1?'s':'')+' deleted (restorable from Activity)'):'');
     saveB(); renderBoard(); renderActivity();
-    showToast('Project deleted'+(removed.length?' · '+removed.length+' task'+(removed.length>1?'s':'')+' too':''), ()=>{
-      B.projects.push(p); removed.forEach(t=>B.tasks.push(t)); projOpen.add(id);
+    showToast('Project deleted'+(copies.length?' · '+copies.length+' task'+(copies.length>1?'s':'')+' too':''), ()=>{
+      B.projects.push(p); copies.forEach(t=>B.tasks.push(t)); projOpen.add(id);
       logB('restored',{text:p.name,owner:p.owner}); saveB(); renderBoard(); renderActivity();
     });
   }
@@ -1165,7 +1180,7 @@
     const stepChip = subs.length ? `<span class="stepc">◑ ${subDone}/${subs.length}</span>` : '';
     const dueChip = (t.due && dueEditId!==t.id) ? `<button class="due ${t.done?'muted':dueStatus(t)}" onclick="startDue('${t.id}')">📅 ${dueLabel(t)}</button>` : '';
     let reorder='';
-    if(menuId===t.id && !t.done){ const s=siblings(t), i=s.findIndex(x=>x.id===t.id);
+    if(menuId===t.id && !t.done && sortMode==='manual'){ const s=siblings(t), i=s.findIndex(x=>x.id===t.id);
       reorder=`<button onclick="moveUp('${t.id}')" ${i<=0?'disabled':''}>↑ Up</button><button onclick="moveDown('${t.id}')" ${i>=s.length-1?'disabled':''}>↓ Down</button>`; }
     const menu = menuId===t.id ? `<div class="cardmenu">
         <button class="${t.flagged?'flagon':''}" onclick="pickAct('${t.id}','flag')">🚩 ${t.flagged?'Unflag':'Flag blocked'}</button>
@@ -1198,7 +1213,7 @@
     const pt=B.tasks.filter(t=>t.projectId===p.id);
     const total=pt.length, dc=pt.filter(t=>t.done).length, pct=total?Math.round(dc/total*100):0;
     const open=projOpen.has(p.id);
-    const active=pt.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0)), done=pt.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+    const active=sortTasks(pt.filter(t=>!t.done)), done=pt.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
     const nameCell = projEditId===p.id
       ? `<input class="proj-rename" data-id="${p.id}" value="${esc(p.name)}" onclick="event.stopPropagation()"
            onkeydown="event.stopPropagation(); if(event.key==='Enter')commitRenameProject('${p.id}',this.value); else if(event.key==='Escape')cancelRenameProject()"
@@ -1240,7 +1255,7 @@
       const mine=B.tasks.filter(t=>t.owner===f.k);
       const total=mine.length, dc=mine.filter(t=>t.done).length, pct=total?Math.round(dc/total*100):0;
       const loose=mine.filter(t=>t.projectId==null);
-      const looseActive=loose.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0)); // newest first by default, manually reorderable
+      const looseActive=sortTasks(loose.filter(t=>!t.done));
       const looseDone=loose.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
       const projects=B.projects.filter(p=>p.owner===f.k);
 
