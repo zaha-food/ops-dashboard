@@ -708,7 +708,11 @@
   let FOUNDERS = [];   // loaded from the founders table on login
   let F = {};
   const BKEY = 'zaha_building_v3';
-  const uid = ()=> (crypto.randomUUID ? crypto.randomUUID() : 't'+Date.now()+Math.random().toString(36).slice(2,7));
+  const uid = ()=>{
+    try{ if(typeof crypto!=='undefined' && crypto.randomUUID) return crypto.randomUUID(); }catch(e){}
+    // fallback for non-secure (HTTP) contexts where crypto.randomUUID is unavailable — still a valid UUID v4
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{ const r=Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); });
+  };
   let B = { projects:[], tasks:[], activity:[], me:'aonali' };
   let editingId=null, dragId=null, undoTimer=null, skipBlur=false;
   let dueEditId=null, subAddId=null, skipSubBlur=false, moveMenuId=null, menuId=null;
