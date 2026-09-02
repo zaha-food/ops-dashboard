@@ -769,11 +769,12 @@
 
   let _ready=false, _subbed=false;
   const _shadow = { projects:new Map(), tasks:new Map(), activity:new Map() };
+  function saveFail(where, error){ const msg=(error&&error.message)||'check your connection'; console.warn('SAVE FAIL', where, error); showToast('⚠ Couldn’t save — '+msg); }
   function _syncColl(name, table, arr, toRow, allowDelete){
     const cur=new Map();
     arr.forEach(item=>{ const row=toRow(item); const sig=JSON.stringify(row); cur.set(item.id,sig);
-      if(_shadow[name].get(item.id)!==sig){ sb.from(table).upsert(row).then(({error})=>{ if(error) console.warn(table+' save:', error.message); }); } });
-    if(allowDelete){ _shadow[name].forEach((_s,id)=>{ if(!cur.has(id)){ sb.from(table).delete().eq('id',id).then(({error})=>{ if(error) console.warn(table+' del:', error.message); }); } }); }
+      if(_shadow[name].get(item.id)!==sig){ sb.from(table).upsert(row).then(({error})=>{ if(error) saveFail(table+' save', error); }).catch(e=>saveFail(table+' save', e)); } });
+    if(allowDelete){ _shadow[name].forEach((_s,id)=>{ if(!cur.has(id)){ sb.from(table).delete().eq('id',id).then(({error})=>{ if(error) saveFail(table+' delete', error); }).catch(e=>saveFail(table+' delete', e)); } }); }
     _shadow[name]=cur;
   }
   function saveB(){
