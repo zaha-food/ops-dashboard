@@ -362,6 +362,19 @@
   .proj-new:hover{background:#fff;border-style:solid;}
   .newproj input{width:100%;border:1px solid var(--accent);border-radius:9px;padding:9px 11px;font:inherit;font-size:13px;}
   .newproj input:focus{outline:none;}
+  /* shared projects */
+  .shared-wrap{margin-bottom:26px;}
+  .shared-hd{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--clay);font-weight:600;margin-bottom:12px;}
+  .shared-note{font-size:13px;color:var(--soft);background:#fff;border:1px dashed var(--line2);border-radius:12px;padding:14px 18px;}
+  .shared-new{max-width:280px;}
+  .shared-filter{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;margin-bottom:10px;}
+  .shared-filter button{border:none;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:var(--soft);padding:5px 12px;cursor:pointer;}
+  .shared-filter button.on{background:var(--sand2);color:var(--accent-ink);}
+  .assignee{border:none;background:transparent;padding:0;cursor:pointer;display:inline-flex;align-items:center;flex:0 0 auto;}
+  .assignee .av{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:600;}
+  .assignee.unassigned{font-size:10.5px;font-weight:600;color:var(--soft);border:1px dashed var(--line2);border-radius:99px;padding:2px 8px;}
+  .assignee.unassigned:hover{color:var(--ink);border-style:solid;}
+  .move-menu .mm-unassign{color:var(--soft);}
 
   /* activity drawer */
   .drawer-scrim{position:fixed;inset:0;background:rgba(47,54,55,.28);opacity:0;pointer-events:none;transition:.2s;z-index:30;}
@@ -515,6 +528,7 @@
               <button class="mini-btn" onclick="openActivity()">🕑 Activity</button>
             </div>
           </div>
+          <div id="sharedSection"></div>
           <div class="board" id="board"></div>
 
           <!-- activity drawer -->
@@ -766,6 +780,9 @@
   const doneOpen = new Set();
   const projOpen = new Set();
   const subsOpen = new Set();
+  const sharedOpen = new Set();   // expanded shared projects
+  const sharedMine = new Set();   // "Mine" filter per shared project
+  let sharedAddOpen = false;      // creating a new shared project
   // sort is per founder-column (each person sorts their own list)
   let sortByCol = (function(){ try{ return JSON.parse(localStorage.getItem('zaha_sortcols'))||{}; }catch(e){ return {}; } })();
   function sortModeFor(k){ return sortByCol[k]||'manual'; }
@@ -826,12 +843,13 @@
   const toISO = ms => ms ? new Date(ms).toISOString() : null;
   function taskToRow(t){ const r={ id:t.id, owner:t.owner, project_id:t.projectId||null, text:t.text, done:!!t.done, flagged:!!t.flagged, due:t.due||null, subs:t.subs||[], sort_order:(t.order??0), created_at:toISO(t.createdAt), created_by:t.createdBy||null, done_at:toISO(t.doneAt), done_by:t.doneBy||null }; if(_hasDesc) r.description=t.desc||null; return r; }
   const rowToTask = r => ({ id:r.id, owner:r.owner, projectId:r.project_id||null, text:r.text, done:!!r.done, flagged:!!r.flagged, due:r.due||null, subs:Array.isArray(r.subs)?r.subs:[], order:r.sort_order??0, createdAt:r.created_at?new Date(r.created_at).getTime():Date.now(), createdBy:r.created_by||null, doneAt:r.done_at?new Date(r.done_at).getTime():null, doneBy:r.done_by||null, desc:r.description||null });
-  const projectToRow = p => ({ id:p.id, owner:p.owner, name:p.name });
-  const rowToProject = r => ({ id:r.id, owner:r.owner, name:r.name });
+  function projectToRow(p){ const r={ id:p.id, owner:p.owner, name:p.name }; if(_hasShared){ r.kind=p.kind||'individual'; r.due=p.due||null; } return r; }
+  const rowToProject = r => ({ id:r.id, owner:r.owner, name:r.name, kind:r.kind||'individual', due:r.due||null });
+  function isShared(t){ if(!t.projectId) return false; const p=B.projects.find(x=>x.id===t.projectId); return !!(p && p.kind==='shared'); }
   const activityToRow = a => ({ id:a.id, ts:toISO(a.ts), actor:a.actor, verb:a.verb, text:a.text||null, owner:a.owner||null, detail:a.detail||null, snapshot:a.snapshot||null, restored:!!a.restored });
   const rowToActivity = r => ({ id:r.id, ts:r.ts?new Date(r.ts).getTime():Date.now(), actor:r.actor, verb:r.verb, text:r.text, owner:r.owner, detail:r.detail, snapshot:r.snapshot, restored:!!r.restored });
 
-  let _ready=false, _subbed=false, _hasDesc=false;
+  let _ready=false, _subbed=false, _hasDesc=false, _hasShared=false;
   const _shadow = { projects:new Map(), tasks:new Map(), activity:new Map() };
   let _pending=0, _failedAt=0, _retryT=null;
   function setSaveStatus(){
@@ -1030,6 +1048,7 @@
     if(!me){ await sb.auth.signOut(); showLogin('This account isn’t set up as a founder yet.'); return; }
     ME=me; USER_EMAIL=user.email||''; B.me=me.key; IS_ADMIN=!!me.is_admin;
     try{ const pr=await sb.from('tasks').select('description').limit(1); _hasDesc=!pr.error; }catch(e){ _hasDesc=false; }
+    try{ const pk=await sb.from('projects').select('kind').limit(1); _hasShared=!pk.error; }catch(e){ _hasShared=false; }
     await loadAll();
     _ready=true;
     const av=document.getElementById('whoAv'), nm=document.getElementById('whoNm'), rl=document.getElementById('whoRl');
@@ -1216,7 +1235,90 @@
   /* ---- move / reassign (tap-friendly, works on touch + mouse) ---- */
   function openMove(id){ moveMenuId = moveMenuId===id?null:id; renderBoard(); }
   function closeMove(){ moveMenuId=null; renderBoard(); }
-  function doMove(id,owner){ moveMenuId=null; moveTask(id,owner); }
+  function doMove(id,owner){ moveMenuId=null; const t=B.tasks.find(x=>x.id===id); if(!t) return; if(isShared(t)){ assignTask(id, owner||null); } else { moveTask(id,owner); } }
+
+  /* ---- shared projects (cross-founder) ---- */
+  function startShared(){ if(!_hasShared){ showToast('Run the shared-projects setup SQL first'); return; } sharedAddOpen=true; renderBoard(); }
+  function cancelShared(){ skipProjBlur=true; sharedAddOpen=false; renderBoard(); }
+  function createShared(val){
+    if(skipProjBlur){ skipProjBlur=false; return; }
+    const name=(val||'').trim(); sharedAddOpen=false;
+    if(name){ const p={id:uid(),owner:B.me,name,kind:'shared',due:null}; B.projects.push(p); sharedOpen.add(p.id); logB('proj_add',{text:name,owner:B.me},'shared'); saveB(); renderActivity(); }
+    renderBoard();
+  }
+  function toggleShared(id){ sharedOpen.has(id)?sharedOpen.delete(id):sharedOpen.add(id); renderBoard(); }
+  function setSharedMine(id,on){ on?sharedMine.add(id):sharedMine.delete(id); renderBoard(); }
+  function addSharedTask(pid){
+    const inp=document.getElementById('adds-'+pid); if(!inp) return;
+    const text=(inp.value||'').trim(); if(!text) return;
+    const t={id:uid(),owner:null,projectId:pid,text,done:false,createdAt:Date.now(),createdBy:B.me,doneAt:null,doneBy:null,due:null,subs:[],order:-Date.now(),flagged:false};
+    B.tasks.push(t); logB('added',t); saveB(); renderBoard(); renderActivity();
+    const ni=document.getElementById('adds-'+pid); if(ni){ ni.value=''; ni.focus(); }
+  }
+  function assignTask(id, owner){
+    const t=B.tasks.find(x=>x.id===id); if(!t) return;
+    const from=t.owner; t.owner=owner||null;
+    const nm=k=>k?(F[k]?F[k].n:k):'Unassigned';
+    logB('assigned',t, nm(from)+'→'+nm(t.owner)); saveB(); renderBoard(); renderActivity();
+    showToast(t.owner?('Assigned to '+nm(t.owner)):'Unassigned', ()=>{ t.owner=from; logB('assigned',t,nm(t.owner)+'→'+nm(from)); saveB(); renderBoard(); renderActivity(); });
+  }
+  function setSharedDue(pid,val){ const p=B.projects.find(x=>x.id===pid); if(!p) return; p.due=val||null; logB('proj_due',{text:p.name,owner:p.owner}, val?('due '+new Date(val+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})):'cleared'); saveB(); renderBoard(); renderActivity(); }
+  function askDeleteShared(id){ projDelId=id; renderBoard(); }
+  function deleteSharedProject(id){
+    const p=B.projects.find(x=>x.id===id); if(!p) return;
+    const tasks=B.tasks.filter(t=>t.projectId===id).map(t=>JSON.parse(JSON.stringify(t)));
+    B.tasks=B.tasks.filter(t=>t.projectId!==id);
+    B.projects=B.projects.filter(x=>x.id!==id); projDelId=null;
+    logB('sharedproj_delete',{text:p.name,owner:p.owner}, tasks.length?('· '+tasks.length+' task'+(tasks.length>1?'s':'')+' (restorable from Activity)'):'');
+    const e=B.activity[0]; if(e) e.snapshot={project:JSON.parse(JSON.stringify(p)), tasks};
+    saveB(); renderBoard(); renderActivity();
+    showToast('Project deleted'+(tasks.length?' · '+tasks.length+' task'+(tasks.length>1?'s':'')+' too':''), ()=>restoreProject(e));
+  }
+  function restoreProject(entry){
+    if(!entry||!entry.snapshot||!entry.snapshot.project) return;
+    const snap=entry.snapshot;
+    if(!B.projects.some(x=>x.id===snap.project.id)) B.projects.push(JSON.parse(JSON.stringify(snap.project)));
+    (snap.tasks||[]).forEach(t=>{ if(!B.tasks.some(x=>x.id===t.id)) B.tasks.push(JSON.parse(JSON.stringify(t))); });
+    entry.restored=true; sharedOpen.add(snap.project.id);
+    logB('restored',{text:snap.project.name,owner:snap.project.owner}); saveB(); renderBoard(); renderActivity();
+  }
+  function restoreProjectFromActivity(logId){ restoreProject(B.activity.find(x=>x.id===logId)); }
+  function renderShared(){
+    const el=document.getElementById('sharedSection'); if(!el) return;
+    if(!_hasShared){ el.innerHTML = IS_ADMIN ? `<div class="shared-wrap"><div class="shared-note">Run the shared-projects setup SQL to enable this section.</div></div>` : ''; return; }
+    const shared=B.projects.filter(p=>p.kind==='shared').sort((a,b)=>a.name.localeCompare(b.name));
+    const newCtrl = sharedAddOpen
+      ? `<div class="newproj"><input id="newshared" placeholder="Shared project name…" onkeydown="if(event.key==='Enter')createShared(this.value); else if(event.key==='Escape')cancelShared()" onblur="createShared(this.value)"></div>`
+      : `<button class="proj-new shared-new" onclick="startShared()">＋ New shared project</button>`;
+    el.innerHTML = `<div class="shared-wrap"><div class="shared-hd">Shared projects</div>${shared.map(renderSharedProject).join('')}${newCtrl}</div>`;
+    if(sharedAddOpen){ const i=document.getElementById('newshared'); if(i) i.focus(); }
+  }
+  function renderSharedProject(p){
+    const pt=B.tasks.filter(t=>t.projectId===p.id);
+    const total=pt.length, dc=pt.filter(t=>t.done).length, pct=total?Math.round(dc/total*100):0;
+    const open=sharedOpen.has(p.id), mineOn=sharedMine.has(p.id);
+    let active=pt.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0));
+    let done=pt.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+    if(mineOn){ active=active.filter(t=>t.owner===B.me); done=done.filter(t=>t.owner===B.me); }
+    const nameCell = projEditId===p.id
+      ? `<input class="proj-rename" data-id="${p.id}" value="${esc(p.name)}" onclick="event.stopPropagation()" onkeydown="event.stopPropagation(); if(event.key==='Enter')commitRenameProject('${p.id}',this.value); else if(event.key==='Escape')cancelRenameProject()" onblur="commitRenameProject('${p.id}',this.value)">`
+      : `<span class="proj-name">${esc(p.name)}</span>`;
+    const dueLbl = p.due ? `<span class="due ${dueStatus({due:p.due,done:false})}" style="pointer-events:none">📅 ${dueLabel({due:p.due,done:false})}</span>` : '';
+    const listHtml = (active.length+done.length)===0 ? `<div class="col-empty">${mineOn?'Nothing assigned to you here.':'No tasks yet — add one below.'}</div>` : active.map(taskCard).join('')+done.map(taskCard).join('');
+    const body = open ? `<div class="proj-body">
+        <div class="shared-filter"><button class="${!mineOn?'on':''}" onclick="setSharedMine('${p.id}',false)">All</button><button class="${mineOn?'on':''}" onclick="setSharedMine('${p.id}',true)">Mine</button></div>
+        <div class="tasks">${listHtml}</div>
+        <div class="addrow proj-add"><input id="adds-${p.id}" placeholder="Add task to project…" onkeydown="if(event.key==='Enter')addSharedTask('${p.id}')"><button onclick="addSharedTask('${p.id}')">+</button></div>
+        ${projDelId===p.id
+          ? `<div class="proj-confirm"><div class="pc-q">Delete “${esc(p.name)}”?</div><button class="pc-all" onclick="deleteSharedProject('${p.id}')">Delete project${total?' + '+total+' task'+(total>1?'s':''):''}</button><button class="pc-cancel" onclick="cancelDeleteProject()">Cancel</button></div>`
+          : `<div class="proj-acts"><label class="cmi">📅 ${p.due?'Change due':'Add due'}<input type="date" class="due-ovl" value="${p.due||''}" onchange="setSharedDue('${p.id}',this.value)"></label><button onclick="startRenameProject('${p.id}')">Rename</button><button onclick="askDeleteShared('${p.id}')">Delete project</button></div>`}
+      </div>` : '';
+    return `<div class="proj shared">
+      <div class="proj-head" onclick="toggleShared('${p.id}')"><span class="proj-toggle">${open?'▾':'▸'}</span>${nameCell}${dueLbl}<span class="proj-cnt">${dc}/${total}</span></div>
+      <div class="proj-prog"><i style="width:${pct}%"></i></div>
+      ${body}
+    </div>`;
+  }
 
   /* ---- individual projects ---- */
   function toggleProj(id){ projOpen.has(id)?projOpen.delete(id):projOpen.add(id); renderBoard(); }
@@ -1329,6 +1431,10 @@
         onblur="commitEdit('${t.id}',this.value)">${esc(t.text)}</textarea></div>`;
     }
     const subs=t.subs||[], subDone=subs.filter(s=>s.done).length;
+    const sharedTask = isShared(t);
+    const assigneeChip = sharedTask ? (t.owner
+      ? `<button class="assignee" onclick="openMove('${t.id}')" title="Assigned to ${esc(F[t.owner]?F[t.owner].n:t.owner)}"><span class="av" style="background:${F[t.owner]?F[t.owner].c:'#999'};color:${textOn(F[t.owner]?F[t.owner].c:'#999')}">${(F[t.owner]?F[t.owner].n:'?')[0]}</span></button>`
+      : `<button class="assignee unassigned" onclick="openMove('${t.id}')" title="Assign">＋ assign</button>`) : '';
     const showSubs = subsOpen.has(t.id) || subAddId===t.id;
     const subsHtml = (showSubs && (subs.length || subAddId===t.id)) ? `<div class="subs">${subs.map(s=>subRow(t,s)).join('')}${subAddId===t.id?subInput(t.id):''}</div>` : '';
     const stepChip = subs.length ? `<button class="stepc toggle" onclick="toggleSubs('${t.id}')" title="Show/hide subtasks">${showSubs?'▾':'▸'} ${subDone}/${subs.length}</button>` : '';
@@ -1337,7 +1443,7 @@
       : (t.desc ? `<div class="task-desc" onclick="startDesc('${t.id}')" title="Click to edit">${esc(t.desc)}</div>` : '');
     const dueChip = t.due ? `<label class="due ${t.done?'muted':dueStatus(t)}">📅 ${dueLabel(t)}<input type="date" class="due-ovl" value="${t.due}" onchange="setDue('${t.id}',this.value)" aria-label="Change due date"></label><button class="due-clr" title="Clear date" onclick="clearDue('${t.id}')">×</button>` : '';
     let reorder='';
-    if(menuId===t.id && !t.done){
+    if(menuId===t.id && !t.done && !sharedTask){
       if(sortModeFor(t.owner)==='manual'){ const s=siblings(t), i=s.findIndex(x=>x.id===t.id);
         reorder=`<button onclick="moveUp('${t.id}')" ${i<=0?'disabled':''}>↑ Up</button><button onclick="moveDown('${t.id}')" ${i>=s.length-1?'disabled':''}>↓ Down</button>`;
       } else {
@@ -1349,20 +1455,20 @@
         <label class="cmi">📅 ${t.due?'Change date':'Add date'}<input type="date" class="due-ovl" value="${t.due||''}" onchange="setDue('${t.id}',this.value)"></label>
         <button onclick="pickAct('${t.id}','step')">＋ Subtask</button>
         <button onclick="pickAct('${t.id}','desc')">📝 ${t.desc?'Edit note':'Note'}</button>
-        <button onclick="pickAct('${t.id}','move')">⇄ Move</button>
+        <button onclick="pickAct('${t.id}','move')">⇄ ${sharedTask?'Assign':'Move'}</button>
         ${reorder}
         <button onclick="pickAct('${t.id}','edit')">✎ Edit</button>
         <button class="del" onclick="pickAct('${t.id}','delete')">✕ Delete</button>
       </div>` : '';
-    const moveMenu = moveMenuId===t.id ? `<div class="move-menu"><span class="mm-label">Move to</span>${FOUNDERS.filter(f=>f.k!==t.owner).map(f=>`<button class="mm-opt" onclick="doMove('${t.id}','${f.k}')"><span class="av" style="background:${f.c};color:${textOn(f.c)}">${f.n[0]}</span>${f.n}</button>`).join('')}<button class="mm-cancel" onclick="closeMove()">Cancel</button></div>` : '';
-    return `<div class="task ${t.done?'done':''} ${t.flagged?'flagged':''}" draggable="true" data-id="${t.id}" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
+    const moveMenu = moveMenuId===t.id ? `<div class="move-menu"><span class="mm-label">${sharedTask?'Assign to':'Move to'}</span>${FOUNDERS.filter(f=>f.k!==t.owner).map(f=>`<button class="mm-opt" onclick="doMove('${t.id}','${f.k}')"><span class="av" style="background:${f.c};color:${textOn(f.c)}">${f.n[0]}</span>${f.n}</button>`).join('')}${sharedTask&&t.owner?`<button class="mm-opt mm-unassign" onclick="doMove('${t.id}','')">Unassign</button>`:''}<button class="mm-cancel" onclick="closeMove()">Cancel</button></div>` : '';
+    return `<div class="task ${t.done?'done':''} ${t.flagged?'flagged':''}" draggable="${sharedTask?'false':'true'}" data-id="${t.id}" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
       <div class="row1">
         <div class="cb" onclick="toggleDone('${t.id}')">${t.done?'✓':''}</div>
         <div class="tx">${esc(t.text)}</div>
         <button class="menu-btn ${menuId===t.id?'on':''}" title="Actions" onclick="toggleMenu('${t.id}')">⋯</button>
       </div>
       ${descHtml}
-      <div class="metarow">${t.flagged?'<span class="flagchip" title="Blocked — awaiting something/someone">🚩</span>':''}${dueChip}${stepChip}<span class="meta">${metaLine(t)}</span></div>
+      <div class="metarow">${assigneeChip}${t.flagged?'<span class="flagchip" title="Blocked — awaiting something/someone">🚩</span>':''}${dueChip}${stepChip}<span class="meta">${metaLine(t)}</span></div>
       ${subsHtml}
       ${menu}
       ${moveMenu}
@@ -1409,16 +1515,17 @@
     </div>`;
   }
   function renderBoard(){
+    renderShared();
     const board=document.getElementById('board'); if(!board) return;
     board.innerHTML = FOUNDERS.map(f=>{
-      const mine=B.tasks.filter(t=>t.owner===f.k);
+      const mine=B.tasks.filter(t=>t.owner===f.k && !isShared(t));
       const total=mine.length, dc=mine.filter(t=>t.done).length, pct=total?Math.round(dc/total*100):0;
       const loose=mine.filter(t=>t.projectId==null);
       const sm=sortModeFor(f.k);
       const sortCtrl = mine.length>1 ? `<div class="col-sort"><span class="col-sort-lbl">Sort</span><select onchange="setColSort('${f.k}',this.value)"><option value="manual" ${sm==='manual'?'selected':''}>Manual</option><option value="newest" ${sm==='newest'?'selected':''}>Newest</option><option value="oldest" ${sm==='oldest'?'selected':''}>Oldest</option><option value="due" ${sm==='due'?'selected':''}>Due date</option></select></div>` : '';
       const looseActive=sortTasks(loose.filter(t=>!t.done), sm);
       const looseDone=loose.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
-      const projects=B.projects.filter(p=>p.owner===f.k);
+      const projects=B.projects.filter(p=>p.owner===f.k && p.kind!=='shared');
 
       const looseActiveHtml = looseActive.map(taskCard).join('');
       const looseDoneHtml = looseDone.length ? `<div class="done-sec">
@@ -1470,11 +1577,13 @@
       due_set:'set the due date on',due_clear:'cleared the due date on',
       substep_add:'added a subtask to',substep_done:'checked off a subtask in',substep_reopen:'reopened a subtask in',substep_del:'removed a subtask from',substep_edit:'edited a subtask in',substep_due:'set a subtask due date in',described:'updated the note on',
       proj_add:'created the project',proj_rename:'renamed the project to',proj_delete:'deleted the project',
-      flagged:'flagged as blocked',unflagged:'cleared the flag on'};
+      flagged:'flagged as blocked',unflagged:'cleared the flag on',
+      assigned:'assigned',proj_due:'set the due date on',sharedproj_delete:'deleted the shared project'};
     body.innerHTML = B.activity.map(a=>{
       const who=F[a.actor]?F[a.actor].n:a.actor, c=F[a.actor]?F[a.actor].c:'#999';
       let detail='';
       if(a.verb==='moved'&&a.detail){ const p=a.detail.split('→'); detail=` <span class="vb">(${F[p[0]]?F[p[0]].n:p[0]} → ${F[p[1]]?F[p[1]].n:p[1]})</span>`; }
+      else if(a.verb==='assigned'&&a.detail){ const p=a.detail.split('→'); detail=` <span class="vb">(${esc(p[0])} → ${esc(p[1])})</span>`; }
       else if(a.detail && (a.verb.indexOf('substep')===0 || a.verb.indexOf('due')===0 || a.verb.indexOf('proj')===0)){ detail=` <span class="vb">— ${esc(a.detail)}</span>`; }
       const crossTag=(a.owner&&a.actor!==a.owner&&(a.verb==='completed'||a.verb==='reopened'))?` <span class="vb">(${F[a.owner]?F[a.owner].n:a.owner}’s task)</span>`:'';
       let action='';
@@ -1486,6 +1595,10 @@
         const exists=B.tasks.some(x=>x.id===a.snapshot.taskId);
         action = a.restored ? `<span class="act-restored">✓ Undone</span>`
           : (exists ? `<button class="act-restore" onclick="undoMove('${a.id}')">↩ Undo move</button>` : `<span class="act-restored" style="color:var(--soft)">task removed</span>`);
+      } else if(a.verb==='sharedproj_delete' && a.snapshot && a.snapshot.project){
+        const exists=B.projects.some(x=>x.id===a.snapshot.project.id);
+        action = (a.restored||exists) ? `<span class="act-restored">✓ Restored</span>`
+          : `<button class="act-restore" onclick="restoreProjectFromActivity('${a.id}')">↩ Restore project</button>`;
       }
       return `<div class="act"><span class="av" style="background:${c};color:${textOn(c)}">${who[0]}</span>
         <div class="txt"><b>${who}</b> <span class="vb">${VB[a.verb]||a.verb}</span> “${esc(a.text)}”${detail}${crossTag}
