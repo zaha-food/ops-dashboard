@@ -836,10 +836,14 @@
   let _pending=0, _failedAt=0, _retryT=null;
   function setSaveStatus(){
     const el=document.getElementById('saveStatus'); if(!el) return;
+    if(navigator.onLine===false){ el.textContent='⚠ Offline — will sync when back'; el.className='save-status fail'; return; }
     if(_pending>0){ el.textContent='Saving…'; el.className='save-status busy'; }
     else if(_failedAt){ el.textContent='⚠ Not saved — retrying'; el.className='save-status fail'; }
     else { el.textContent='✓ Saved'; el.className='save-status ok'; }
   }
+  // offline safety net: keep working offline; flush the moment connection returns
+  window.addEventListener('offline', ()=>{ setSaveStatus(); });
+  window.addEventListener('online',  ()=>{ _failedAt=0; setSaveStatus(); if(_ready) saveB(); });
   function scheduleRetry(){ if(_retryT) return; _retryT=setTimeout(()=>{ _retryT=null; if(_ready) saveB(); }, 4000); }
   function saveFail(where, error){ const msg=(error&&error.message)||'check your connection'; console.warn('SAVE FAIL', where, error); _failedAt=Date.now(); setSaveStatus(); scheduleRetry(); showToast('⚠ Not saved — '+msg); }
   function _track(p, where){ _pending++; setSaveStatus();
