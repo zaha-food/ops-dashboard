@@ -234,7 +234,7 @@
   .menu-btn{flex:0 0 22px;width:22px;height:22px;border:none;background:transparent;border-radius:6px;cursor:pointer;color:var(--soft);font-size:16px;line-height:1;padding:0;margin-top:-1px;}
   .menu-btn:hover{background:var(--sand2);color:var(--ink);}
   .menu-btn.on{background:var(--ink);color:#fff;}
-  .metarow{display:flex;align-items:center;gap:6px;margin-top:6px;padding-left:29px;}
+  .metarow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;padding-left:29px;}
   .metarow .meta{margin-left:auto;font-size:10px;padding-left:0;margin-top:0;white-space:nowrap;}
   .cardmenu{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;padding-left:29px;}
   .cardmenu button{font:inherit;font-size:11px;font-weight:600;color:var(--ink);background:var(--sand);border:1px solid var(--line2);border-radius:7px;padding:5px 9px;cursor:pointer;transition:.12s;}
@@ -377,6 +377,63 @@
   .assignee.unassigned{font-size:10.5px;font-weight:600;color:var(--soft);border:1px dashed var(--line2);border-radius:99px;padding:2px 8px;}
   .assignee.unassigned:hover{color:var(--ink);border-style:solid;}
   .move-menu .mm-unassign{color:var(--soft);}
+  /* shared: create-form view pick */
+  .shared-create{max-width:440px;display:flex;flex-direction:column;gap:10px;}
+  .view-pick{display:flex;gap:8px;}
+  .view-pick button{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1px solid var(--line2);background:#fff;border-radius:10px;padding:9px 11px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;text-align:left;}
+  .view-pick button small{font-weight:500;font-size:10.5px;color:var(--soft);}
+  .view-pick button.on{border-color:var(--clay);box-shadow:0 0 0 1px var(--clay);background:var(--sand2);}
+  .sc-acts{display:flex;gap:8px;}
+  .sc-go{border:none;background:var(--clay);color:#fff;border-radius:8px;padding:7px 14px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .sc-cancel{border:1px solid var(--line2);background:#fff;color:var(--soft);border-radius:8px;padding:7px 12px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;}
+  /* shared: topbar filter + view switch */
+  .shared-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+  .shared-topbar .shared-filter{margin-bottom:0;}
+  .view-switch{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;}
+  .view-switch button{border:none;background:#fff;font:inherit;font-size:11px;font-weight:600;color:var(--soft);padding:5px 10px;cursor:pointer;border-left:1px solid var(--line2);}
+  .view-switch button:first-child{border-left:none;}
+  .view-switch button.on{background:var(--clay);color:#fff;}
+  /* kanban */
+  .kanban,.workstream{display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:4px;}
+  .kan-col{flex:1 1 0;min-width:190px;background:var(--sand);border:1px solid var(--line);border-radius:12px;padding:8px;}
+  .kan-hd{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--soft);padding:2px 4px 8px;cursor:pointer;}
+  .kan-hd .kan-cap{color:var(--line2);font-size:10px;}
+  .kan-hd .kan-t{flex:1;}
+  .kan-n{background:#fff;border:1px solid var(--line2);border-radius:99px;padding:0 7px;font-size:10.5px;color:var(--soft);font-weight:600;}
+  .kc-doing .kan-t{color:var(--warn);} .kc-blocked .kan-t{color:var(--danger);} .kc-done .kan-t{color:var(--ok);}
+  .kan-list{display:flex;flex-direction:column;gap:8px;}
+  .kan-list .task{margin:0;}
+  .kan-empty{color:var(--line2);font-size:12px;text-align:center;padding:6px 0;}
+  /* workstream */
+  .ws-col{flex:1 1 0;min-width:210px;background:var(--sand);border:1px solid var(--line);border-radius:12px;padding:8px;}
+  .ws-hd{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ink);padding:2px 2px 8px;}
+  .ws-hd .ws-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ws-ctrls{display:inline-flex;gap:1px;}
+  .ws-ctrls button{border:none;background:transparent;color:var(--soft);cursor:pointer;font-size:12px;padding:2px 3px;border-radius:5px;line-height:1;}
+  .ws-ctrls button:hover:not(:disabled){background:var(--sand2);color:var(--ink);}
+  .ws-ctrls button:disabled{opacity:.3;cursor:default;}
+  .ws-rename{width:100%;font:inherit;font-size:12px;font-weight:700;border:1px solid var(--clay);border-radius:6px;padding:3px 6px;}
+  .ws-add{margin-bottom:8px;}
+  .ws-add input,.ws-newcol input{width:100%;font:inherit;font-size:12px;border:1px solid var(--line2);border-radius:8px;padding:6px 9px;background:#fff;}
+  .ws-add input:focus,.ws-newcol input:focus{outline:none;border-color:var(--clay);}
+  .ws-newcol{min-width:180px;} .ws-newcol input{border-color:var(--clay);}
+  .ws-addcol{flex:0 0 auto;align-self:flex-start;border:1px dashed var(--line2);background:#fff;border-radius:12px;padding:10px 14px;font:inherit;font-size:12px;font-weight:600;color:var(--soft);cursor:pointer;white-space:nowrap;}
+  .ws-addcol:hover{color:var(--ink);border-style:solid;}
+  /* status + lane pills */
+  .stpill{border:none;border-radius:99px;font:inherit;font-size:10.5px;font-weight:700;padding:2px 9px;cursor:pointer;}
+  .st-todo{background:var(--sand2);color:var(--soft);}
+  .st-doing{background:var(--warn-bg);color:var(--warn);}
+  .st-blocked{background:var(--danger-bg);color:var(--danger);}
+  .lanepill{border:1px solid var(--line2);background:#fff;border-radius:99px;font:inherit;font-size:10.5px;font-weight:600;color:var(--soft);padding:2px 9px;cursor:pointer;}
+  .st-menu .stdot{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;font-size:9px;color:#fff;}
+  .st-menu .stdot.st-todo{background:var(--soft);}
+  .st-menu .stdot.st-doing{background:var(--warn);}
+  .st-menu .stdot.st-blocked{background:var(--danger);}
+  .st-menu .stdot.st-done{background:var(--ok);}
+  @media(max-width:640px){
+    .kanban,.workstream{flex-direction:column;overflow-x:visible;}
+    .kan-col,.ws-col{width:100%;min-width:0;}
+  }
 
   /* activity drawer */
   .drawer-scrim{position:fixed;inset:0;background:rgba(47,54,55,.28);opacity:0;pointer-events:none;transition:.2s;z-index:30;}
@@ -785,6 +842,12 @@
   const sharedOpen = new Set();   // expanded shared projects
   const sharedMine = new Set();   // "Mine" filter per shared project
   let sharedAddOpen = false;      // creating a new shared project
+  let sharedView = 'kanban';      // view chosen in the create form
+  const kanColClosed = new Set(); // collapsed kanban columns ("pid|status")
+  let stMenuId = null, laneMenuId = null;   // status / column pick menus
+  let colAddFor = null, colRenameId = null; // workstream column editing
+  const STLABEL = { todo:'To do', doing:'Doing', blocked:'Blocked' };
+  const VLABEL  = { list:'☰ List', kanban:'▦ Board', workstream:'▤ Streams' };
   // sort is per founder-column (each person sorts their own list)
   let sortByCol = (function(){ try{ return JSON.parse(localStorage.getItem('zaha_sortcols'))||{}; }catch(e){ return {}; } })();
   function sortModeFor(k){ return sortByCol[k]||'manual'; }
@@ -843,15 +906,15 @@
      realtime pulls other founders' changes back in.
      ============================================================ */
   const toISO = ms => ms ? new Date(ms).toISOString() : null;
-  function taskToRow(t){ const r={ id:t.id, owner:t.owner, project_id:t.projectId||null, text:t.text, done:!!t.done, flagged:!!t.flagged, due:t.due||null, subs:t.subs||[], sort_order:(t.order??0), created_at:toISO(t.createdAt), created_by:t.createdBy||null, done_at:toISO(t.doneAt), done_by:t.doneBy||null }; if(_hasDesc) r.description=t.desc||null; return r; }
-  const rowToTask = r => ({ id:r.id, owner:r.owner, projectId:r.project_id||null, text:r.text, done:!!r.done, flagged:!!r.flagged, due:r.due||null, subs:Array.isArray(r.subs)?r.subs:[], order:r.sort_order??0, createdAt:r.created_at?new Date(r.created_at).getTime():Date.now(), createdBy:r.created_by||null, doneAt:r.done_at?new Date(r.done_at).getTime():null, doneBy:r.done_by||null, desc:r.description||null });
-  function projectToRow(p){ const r={ id:p.id, owner:p.owner, name:p.name }; if(_hasShared){ r.kind=p.kind||'individual'; r.due=p.due||null; } return r; }
-  const rowToProject = r => ({ id:r.id, owner:r.owner, name:r.name, kind:r.kind||'individual', due:r.due||null });
+  function taskToRow(t){ const r={ id:t.id, owner:t.owner, project_id:t.projectId||null, text:t.text, done:!!t.done, flagged:!!t.flagged, due:t.due||null, subs:t.subs||[], sort_order:(t.order??0), created_at:toISO(t.createdAt), created_by:t.createdBy||null, done_at:toISO(t.doneAt), done_by:t.doneBy||null }; if(_hasDesc) r.description=t.desc||null; if(_hasBoard){ r.status=t.status||'todo'; r.col_id=t.colId||null; } return r; }
+  const rowToTask = r => ({ id:r.id, owner:r.owner, projectId:r.project_id||null, text:r.text, done:!!r.done, flagged:!!r.flagged, due:r.due||null, subs:Array.isArray(r.subs)?r.subs:[], order:r.sort_order??0, createdAt:r.created_at?new Date(r.created_at).getTime():Date.now(), createdBy:r.created_by||null, doneAt:r.done_at?new Date(r.done_at).getTime():null, doneBy:r.done_by||null, desc:r.description||null, status:r.status||'todo', colId:r.col_id||null });
+  function projectToRow(p){ const r={ id:p.id, owner:p.owner, name:p.name }; if(_hasShared){ r.kind=p.kind||'individual'; r.due=p.due||null; } if(_hasBoard){ r.view=p.view||'list'; r.columns=Array.isArray(p.columns)?p.columns:[]; } return r; }
+  const rowToProject = r => ({ id:r.id, owner:r.owner, name:r.name, kind:r.kind||'individual', due:r.due||null, view:r.view||'list', columns:Array.isArray(r.columns)?r.columns:[] });
   function isShared(t){ if(!t.projectId) return false; const p=B.projects.find(x=>x.id===t.projectId); return !!(p && p.kind==='shared'); }
   const activityToRow = a => ({ id:a.id, ts:toISO(a.ts), actor:a.actor, verb:a.verb, text:a.text||null, owner:a.owner||null, detail:a.detail||null, snapshot:a.snapshot||null, restored:!!a.restored });
   const rowToActivity = r => ({ id:r.id, ts:r.ts?new Date(r.ts).getTime():Date.now(), actor:r.actor, verb:r.verb, text:r.text, owner:r.owner, detail:r.detail, snapshot:r.snapshot, restored:!!r.restored });
 
-  let _ready=false, _subbed=false, _hasDesc=false, _hasShared=false;
+  let _ready=false, _subbed=false, _hasDesc=false, _hasShared=false, _hasBoard=false;
   const _shadow = { projects:new Map(), tasks:new Map(), activity:new Map() };
   let _pending=0, _failedAt=0, _retryT=null;
   function setSaveStatus(){
@@ -1051,6 +1114,7 @@
     ME=me; USER_EMAIL=user.email||''; B.me=me.key; IS_ADMIN=!!me.is_admin;
     try{ const pr=await sb.from('tasks').select('description').limit(1); _hasDesc=!pr.error; }catch(e){ _hasDesc=false; }
     try{ const pk=await sb.from('projects').select('kind').limit(1); _hasShared=!pk.error; }catch(e){ _hasShared=false; }
+    try{ const bk=await sb.from('tasks').select('status').limit(1); _hasBoard=!bk.error; }catch(e){ _hasBoard=false; }
     await loadAll();
     _ready=true;
     const av=document.getElementById('whoAv'), nm=document.getElementById('whoNm'), rl=document.getElementById('whoRl');
@@ -1242,21 +1306,48 @@
   /* ---- shared projects (cross-founder) ---- */
   function startShared(){ if(!_hasShared){ showToast('Run the shared-projects setup SQL first'); return; } sharedAddOpen=true; renderBoard(); }
   function cancelShared(){ skipProjBlur=true; sharedAddOpen=false; renderBoard(); }
-  function createShared(val){
-    if(skipProjBlur){ skipProjBlur=false; return; }
-    const name=(val||'').trim(); sharedAddOpen=false;
-    if(name){ const p={id:uid(),owner:B.me,name,kind:'shared',due:null}; B.projects.push(p); sharedOpen.add(p.id); logB('proj_add',{text:name,owner:B.me},'shared'); saveB(); renderActivity(); }
+  function setCreateView(v){ sharedView=v; renderBoard(); }
+  function createShared(){
+    const inp=document.getElementById('newshared'); const name=(inp?inp.value:'').trim();
+    sharedAddOpen=false;
+    if(name){ const view=_hasBoard?sharedView:'list'; const p={id:uid(),owner:B.me,name,kind:'shared',due:null,view,columns:[]}; B.projects.push(p); sharedOpen.add(p.id); logB('proj_add',{text:name,owner:B.me}, view!=='list'?('shared · '+VLABEL[view].replace(/^\S+\s/,'')):'shared'); saveB(); renderActivity(); }
     renderBoard();
   }
   function toggleShared(id){ sharedOpen.has(id)?sharedOpen.delete(id):sharedOpen.add(id); renderBoard(); }
   function setSharedMine(id,on){ on?sharedMine.add(id):sharedMine.delete(id); renderBoard(); }
-  function addSharedTask(pid){
-    const inp=document.getElementById('adds-'+pid); if(!inp) return;
+  function addSharedTask(pid, colId, inpId){
+    inpId = inpId || ('adds-'+pid);
+    const inp=document.getElementById(inpId); if(!inp) return;
     const text=(inp.value||'').trim(); if(!text) return;
-    const t={id:uid(),owner:null,projectId:pid,text,done:false,createdAt:Date.now(),createdBy:B.me,doneAt:null,doneBy:null,due:null,subs:[],order:-Date.now(),flagged:false};
+    const t={id:uid(),owner:null,projectId:pid,text,done:false,createdAt:Date.now(),createdBy:B.me,doneAt:null,doneBy:null,due:null,subs:[],order:-Date.now(),flagged:false,status:'todo',colId:(colId||null)};
     B.tasks.push(t); logB('added',t); saveB(); renderBoard(); renderActivity();
-    const ni=document.getElementById('adds-'+pid); if(ni){ ni.value=''; ni.focus(); }
+    const ni=document.getElementById(inpId); if(ni){ ni.value=''; ni.focus(); }
   }
+  /* ---- board: kanban status + workstream columns ---- */
+  function openStatus(id){ stMenuId=id; menuId=null; moveMenuId=null; laneMenuId=null; renderBoard(); }
+  function closeStatus(){ stMenuId=null; renderBoard(); }
+  function setStatus(id,st){ stMenuId=null; const t=B.tasks.find(x=>x.id===id); if(!t) return;
+    if(st==='done'){ if(!t.done) toggleDone(id); return; }
+    const was=t.done; t.done=false; if(was){ t.doneAt=null; t.doneBy=null; }
+    t.status=st; logB('status',t,STLABEL[st]); saveB(); renderBoard(); renderActivity();
+  }
+  function openLane(id){ laneMenuId=id; menuId=null; moveMenuId=null; stMenuId=null; renderBoard(); }
+  function closeLane(){ laneMenuId=null; renderBoard(); }
+  function setLane(id,colId){ laneMenuId=null; const t=B.tasks.find(x=>x.id===id); if(!t) return;
+    const p=B.projects.find(x=>x.id===t.projectId);
+    const nm=cid=>{ if(!cid) return 'General'; const c=p&&(p.columns||[]).find(x=>x.id===cid); return c?c.name:'General'; };
+    t.colId=colId||null; logB('moved_col',t,nm(colId)); saveB(); renderBoard(); renderActivity();
+  }
+  function setSharedView(pid,view){ const p=B.projects.find(x=>x.id===pid); if(!p||(p.view||'list')===view) return; p.view=view; logB('view_change',{text:p.name,owner:p.owner}, VLABEL[view].replace(/^\S+\s/,'')); saveB(); renderBoard(); renderActivity(); }
+  function toggleKanCol(pid,k){ const key=pid+'|'+k; kanColClosed.has(key)?kanColClosed.delete(key):kanColClosed.add(key); renderBoard(); }
+  function startAddColumn(pid){ colAddFor=pid; renderBoard(); }
+  function cancelAddColumn(){ skipProjBlur=true; colAddFor=null; renderBoard(); }
+  function addColumn(pid,val){ if(skipProjBlur){ skipProjBlur=false; return; } const p=B.projects.find(x=>x.id===pid); colAddFor=null; const nm=(val||'').trim(); if(p&&nm){ p.columns=Array.isArray(p.columns)?p.columns:[]; p.columns.push({id:uid(),name:nm}); logB('proj_col',{text:p.name,owner:p.owner},'added column “'+nm+'”'); saveB(); renderActivity(); } renderBoard(); }
+  function startRenameColumn(pid,cid){ colRenameId=cid; renderBoard(); }
+  function cancelRenameColumn(){ skipProjBlur=true; colRenameId=null; renderBoard(); }
+  function commitRenameColumn(pid,cid,val){ if(skipProjBlur){ skipProjBlur=false; return; } const p=B.projects.find(x=>x.id===pid); colRenameId=null; const nm=(val||'').trim(); if(p){ const c=(p.columns||[]).find(x=>x.id===cid); if(c&&nm&&nm!==c.name){ c.name=nm; logB('proj_col',{text:p.name,owner:p.owner},'renamed a column to “'+nm+'”'); saveB(); renderActivity(); } } renderBoard(); }
+  function deleteColumn(pid,cid){ const p=B.projects.find(x=>x.id===pid); if(!p) return; p.columns=(p.columns||[]).filter(c=>c.id!==cid); B.tasks.forEach(t=>{ if(t.projectId===pid && t.colId===cid) t.colId=null; }); logB('proj_col',{text:p.name,owner:p.owner},'deleted a column (tasks → General)'); saveB(); renderBoard(); renderActivity(); }
+  function moveColumn(pid,cid,dir){ const p=B.projects.find(x=>x.id===pid); if(!p||!Array.isArray(p.columns)) return; const i=p.columns.findIndex(c=>c.id===cid), j=i+dir; if(i<0||j<0||j>=p.columns.length) return; const a=p.columns.slice(); const tmp=a[i]; a[i]=a[j]; a[j]=tmp; p.columns=a; saveB(); renderBoard(); }
   function assignTask(id, owner){
     const t=B.tasks.find(x=>x.id===id); if(!t) return;
     const from=t.owner; t.owner=owner||null;
@@ -1289,8 +1380,12 @@
     const el=document.getElementById('sharedSection'); if(!el) return;
     if(!_hasShared){ el.innerHTML = IS_ADMIN ? `<div class="shared-wrap"><div class="shared-note">Run the shared-projects setup SQL to enable this section.</div></div>` : ''; return; }
     const shared=B.projects.filter(p=>p.kind==='shared').sort((a,b)=>a.name.localeCompare(b.name));
+    const viewPick = _hasBoard ? `<div class="view-pick">
+        <button class="${sharedView==='kanban'?'on':''}" onclick="setCreateView('kanban')">▦ Kanban<small>To do · Doing · Blocked · Done</small></button>
+        <button class="${sharedView==='workstream'?'on':''}" onclick="setCreateView('workstream')">▤ Workstream<small>your own named columns</small></button>
+      </div>` : '';
     const newCtrl = sharedAddOpen
-      ? `<div class="newproj"><input id="newshared" placeholder="Shared project name…" onkeydown="if(event.key==='Enter')createShared(this.value); else if(event.key==='Escape')cancelShared()" onblur="createShared(this.value)"></div>`
+      ? `<div class="newproj shared-create"><input id="newshared" placeholder="Shared project name…" onkeydown="if(event.key==='Enter')createShared(); else if(event.key==='Escape')cancelShared()">${viewPick}<div class="sc-acts"><button class="sc-go" onclick="createShared()">Create project</button><button class="sc-cancel" onclick="cancelShared()">Cancel</button></div></div>`
       : `<button class="proj-new shared-new" onclick="startShared()">＋ New shared project</button>`;
     el.innerHTML = `<div class="shared-wrap"><div class="shared-hd">Shared projects</div>${shared.map(renderSharedProject).join('')}${newCtrl}</div>`;
     if(sharedAddOpen){ const i=document.getElementById('newshared'); if(i) i.focus(); }
@@ -1299,27 +1394,78 @@
     const pt=B.tasks.filter(t=>t.projectId===p.id);
     const total=pt.length, dc=pt.filter(t=>t.done).length, pct=total?Math.round(dc/total*100):0;
     const open=sharedOpen.has(p.id), mineOn=sharedMine.has(p.id);
-    let active=pt.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0));
-    let done=pt.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
-    if(mineOn){ active=active.filter(t=>t.owner===B.me); done=done.filter(t=>t.owner===B.me); }
+    const view=_hasBoard?(p.view||'list'):'list';
     const nameCell = projEditId===p.id
       ? `<input class="proj-rename" data-id="${p.id}" value="${esc(p.name)}" onclick="event.stopPropagation()" onkeydown="event.stopPropagation(); if(event.key==='Enter')commitRenameProject('${p.id}',this.value); else if(event.key==='Escape')cancelRenameProject()" onblur="commitRenameProject('${p.id}',this.value)">`
       : `<span class="proj-name">${esc(p.name)}</span>`;
     const dueLbl = p.due ? `<span class="due ${dueStatus({due:p.due,done:false})}" style="pointer-events:none">📅 ${dueLabel({due:p.due,done:false})}</span>` : '';
-    const listHtml = (active.length+done.length)===0 ? `<div class="col-empty">${mineOn?'Nothing assigned to you here.':'No tasks yet — add one below.'}</div>` : active.map(taskCard).join('')+done.map(taskCard).join('');
+    const viewBody = view==='kanban' ? kanbanBody(p) : view==='workstream' ? workstreamBody(p) : listBody(p);
+    const showGlobalAdd = view!=='workstream';
+    const addRow = showGlobalAdd ? `<div class="addrow proj-add"><input id="adds-${p.id}" placeholder="${view==='kanban'?'Add task to “To do”…':'Add task to project…'}" onkeydown="if(event.key==='Enter')addSharedTask('${p.id}','','adds-${p.id}')"><button onclick="addSharedTask('${p.id}','','adds-${p.id}')">+</button></div>` : '';
+    const vsw = _hasBoard ? `<span class="view-switch">${['list','kanban','workstream'].map(v=>`<button class="${view===v?'on':''}" onclick="setSharedView('${p.id}','${v}')">${VLABEL[v]}</button>`).join('')}</span>` : '';
+    const acts = projDelId===p.id
+      ? `<div class="proj-confirm"><div class="pc-q">Delete “${esc(p.name)}”?</div><button class="pc-all" onclick="deleteSharedProject('${p.id}')">Delete project${total?' + '+total+' task'+(total>1?'s':''):''}</button><button class="pc-cancel" onclick="cancelDeleteProject()">Cancel</button></div>`
+      : `<div class="proj-acts"><label class="cmi">📅 ${p.due?'Change due':'Add due'}<input type="date" class="due-ovl" value="${p.due||''}" onchange="setSharedDue('${p.id}',this.value)"></label><button onclick="startRenameProject('${p.id}')">Rename</button><button onclick="askDeleteShared('${p.id}')">Delete project</button></div>`;
     const body = open ? `<div class="proj-body">
-        <div class="shared-filter"><button class="${!mineOn?'on':''}" onclick="setSharedMine('${p.id}',false)">All</button><button class="${mineOn?'on':''}" onclick="setSharedMine('${p.id}',true)">Mine</button></div>
-        <div class="tasks">${listHtml}</div>
-        <div class="addrow proj-add"><input id="adds-${p.id}" placeholder="Add task to project…" onkeydown="if(event.key==='Enter')addSharedTask('${p.id}')"><button onclick="addSharedTask('${p.id}')">+</button></div>
-        ${projDelId===p.id
-          ? `<div class="proj-confirm"><div class="pc-q">Delete “${esc(p.name)}”?</div><button class="pc-all" onclick="deleteSharedProject('${p.id}')">Delete project${total?' + '+total+' task'+(total>1?'s':''):''}</button><button class="pc-cancel" onclick="cancelDeleteProject()">Cancel</button></div>`
-          : `<div class="proj-acts"><label class="cmi">📅 ${p.due?'Change due':'Add due'}<input type="date" class="due-ovl" value="${p.due||''}" onchange="setSharedDue('${p.id}',this.value)"></label><button onclick="startRenameProject('${p.id}')">Rename</button><button onclick="askDeleteShared('${p.id}')">Delete project</button></div>`}
+        <div class="shared-topbar"><div class="shared-filter"><button class="${!mineOn?'on':''}" onclick="setSharedMine('${p.id}',false)">All</button><button class="${mineOn?'on':''}" onclick="setSharedMine('${p.id}',true)">Mine</button></div>${vsw}</div>
+        ${viewBody}
+        ${addRow}
+        ${acts}
       </div>` : '';
     return `<div class="proj shared">
       <div class="proj-head" onclick="toggleShared('${p.id}')"><span class="proj-toggle">${open?'▾':'▸'}</span>${nameCell}${dueLbl}<span class="proj-cnt">${dc}/${total}</span></div>
       <div class="proj-prog"><i style="width:${pct}%"></i></div>
       ${body}
     </div>`;
+  }
+  function sharedTasksOf(p){ let pt=B.tasks.filter(t=>t.projectId===p.id); if(sharedMine.has(p.id)) pt=pt.filter(t=>t.owner===B.me); return pt; }
+  function listBody(p){
+    const pt=sharedTasksOf(p), mineOn=sharedMine.has(p.id);
+    const active=pt.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0));
+    const done=pt.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+    const html=(active.length+done.length)===0 ? `<div class="col-empty">${mineOn?'Nothing assigned to you here.':'No tasks yet — add one below.'}</div>` : active.map(taskCard).join('')+done.map(taskCard).join('');
+    return `<div class="tasks">${html}</div>`;
+  }
+  const KAN=[{k:'todo',t:'To do'},{k:'doing',t:'Doing'},{k:'blocked',t:'Blocked'},{k:'done',t:'Done'}];
+  function kanbanBody(p){
+    const pt=sharedTasksOf(p);
+    const cols=KAN.map(c=>{
+      let list = c.k==='done' ? pt.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0))
+                              : pt.filter(t=>!t.done && (t.status||'todo')===c.k).sort((a,b)=>(a.order??0)-(b.order??0));
+      const closed=kanColClosed.has(p.id+'|'+c.k);
+      const cards=list.length?list.map(taskCard).join(''):`<div class="kan-empty">—</div>`;
+      return `<div class="kan-col kc-${c.k}">
+        <div class="kan-hd" onclick="toggleKanCol('${p.id}','${c.k}')"><span class="kan-cap">${closed?'▸':'▾'}</span><span class="kan-t">${c.t}</span><span class="kan-n">${list.length}</span></div>
+        ${closed?'':`<div class="kan-list">${cards}</div>`}
+      </div>`;
+    }).join('');
+    return `<div class="kanban">${cols}</div>`;
+  }
+  function workstreamBody(p){
+    const pt=sharedTasksOf(p);
+    const cols=Array.isArray(p.columns)?p.columns:[];
+    const lanes=[{id:'',name:'General',gen:true}].concat(cols.map(c=>({id:c.id,name:c.name})));
+    const laneHtml=lanes.map((ln,idx)=>{
+      const isGen=!ln.id;
+      const list=pt.filter(t=> isGen ? (!t.colId || !cols.some(c=>c.id===t.colId)) : t.colId===ln.id);
+      const active=list.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0));
+      const done=list.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+      const cards=(active.length+done.length)?active.concat(done).map(taskCard).join(''):`<div class="kan-empty">—</div>`;
+      const ctrls=isGen?'':`<span class="ws-ctrls"><button onclick="moveColumn('${p.id}','${ln.id}',-1)" title="Move left" ${idx<=1?'disabled':''}>‹</button><button onclick="moveColumn('${p.id}','${ln.id}',1)" title="Move right" ${idx>=lanes.length-1?'disabled':''}>›</button><button onclick="startRenameColumn('${p.id}','${ln.id}')" title="Rename">✎</button><button onclick="deleteColumn('${p.id}','${ln.id}')" title="Delete column">✕</button></span>`;
+      const nameCell = colRenameId===ln.id
+        ? `<input class="ws-rename" value="${esc(ln.name)}" onkeydown="if(event.key==='Enter')commitRenameColumn('${p.id}','${ln.id}',this.value); else if(event.key==='Escape')cancelRenameColumn()" onblur="commitRenameColumn('${p.id}','${ln.id}',this.value)">`
+        : `<span class="ws-name">${esc(ln.name)}</span>`;
+      const inpId='wsadd-'+p.id+'-'+(ln.id||'gen');
+      return `<div class="ws-col">
+        <div class="ws-hd">${nameCell}<span class="kan-n">${active.length+done.length}</span>${ctrls}</div>
+        <div class="ws-add"><input id="${inpId}" placeholder="Add task…" onkeydown="if(event.key==='Enter')addSharedTask('${p.id}','${ln.id}','${inpId}')"></div>
+        <div class="kan-list">${cards}</div>
+      </div>`;
+    }).join('');
+    const addCol = colAddFor===p.id
+      ? `<div class="ws-col ws-newcol"><input id="wsnewcol-${p.id}" placeholder="Column name…" onkeydown="if(event.key==='Enter')addColumn('${p.id}',this.value); else if(event.key==='Escape')cancelAddColumn()" onblur="addColumn('${p.id}',this.value)"></div>`
+      : `<button class="ws-addcol" onclick="startAddColumn('${p.id}')">＋ Add column</button>`;
+    return `<div class="workstream">${laneHtml}${addCol}</div>`;
   }
 
   /* ---- individual projects ---- */
@@ -1434,6 +1580,11 @@
     }
     const subs=t.subs||[], subDone=subs.filter(s=>s.done).length;
     const sharedTask = isShared(t);
+    const sp = sharedTask ? B.projects.find(x=>x.id===t.projectId) : null;
+    const sview = _hasBoard && sp ? (sp.view||'list') : 'list';
+    const statusPill = (sharedTask && sview==='kanban' && !t.done) ? `<button class="stpill st-${t.status||'todo'}" onclick="openStatus('${t.id}')">${STLABEL[t.status||'todo']}</button>` : '';
+    const laneCol = (sharedTask && sview==='workstream') ? (sp.columns||[]).find(x=>x.id===t.colId) : null;
+    const lanePill = (sharedTask && sview==='workstream') ? `<button class="lanepill" onclick="openLane('${t.id}')">▤ ${laneCol?esc(laneCol.name):'General'}</button>` : '';
     const assigneeChip = sharedTask ? (t.owner
       ? `<button class="assignee" onclick="openMove('${t.id}')" title="Assigned to ${esc(F[t.owner]?F[t.owner].n:t.owner)}"><span class="av" style="background:${F[t.owner]?F[t.owner].c:'#999'};color:${textOn(F[t.owner]?F[t.owner].c:'#999')}">${(F[t.owner]?F[t.owner].n:'?')[0]}</span></button>`
       : `<button class="assignee unassigned" onclick="openMove('${t.id}')" title="Assign">＋ assign</button>`) : '';
@@ -1463,6 +1614,8 @@
         <button class="del" onclick="pickAct('${t.id}','delete')">✕ Delete</button>
       </div>` : '';
     const moveMenu = moveMenuId===t.id ? `<div class="move-menu"><span class="mm-label">${sharedTask?'Assign to':'Move to'}</span>${FOUNDERS.filter(f=>f.k!==t.owner).map(f=>`<button class="mm-opt" onclick="doMove('${t.id}','${f.k}')"><span class="av" style="background:${f.c};color:${textOn(f.c)}">${f.n[0]}</span>${f.n}</button>`).join('')}${sharedTask&&t.owner?`<button class="mm-opt mm-unassign" onclick="doMove('${t.id}','')">Unassign</button>`:''}<button class="mm-cancel" onclick="closeMove()">Cancel</button></div>` : '';
+    const statusMenu = stMenuId===t.id ? `<div class="move-menu st-menu"><span class="mm-label">Set status</span>${['todo','doing','blocked'].map(s=>`<button class="mm-opt" onclick="setStatus('${t.id}','${s}')"><span class="stdot st-${s}"></span>${STLABEL[s]}</button>`).join('')}<button class="mm-opt" onclick="setStatus('${t.id}','done')"><span class="stdot st-done">✓</span>Done</button><button class="mm-cancel" onclick="closeStatus()">Cancel</button></div>` : '';
+    const laneMenu = laneMenuId===t.id ? `<div class="move-menu"><span class="mm-label">Move to column</span><button class="mm-opt" onclick="setLane('${t.id}','')">General</button>${(sp&&sp.columns||[]).map(c=>`<button class="mm-opt" onclick="setLane('${t.id}','${c.id}')">${esc(c.name)}</button>`).join('')}<button class="mm-cancel" onclick="closeLane()">Cancel</button></div>` : '';
     return `<div class="task ${t.done?'done':''} ${t.flagged?'flagged':''}" draggable="${sharedTask?'false':'true'}" data-id="${t.id}" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
       <div class="row1">
         <div class="cb" onclick="toggleDone('${t.id}')">${t.done?'✓':''}</div>
@@ -1470,10 +1623,12 @@
         <button class="menu-btn ${menuId===t.id?'on':''}" title="Actions" onclick="toggleMenu('${t.id}')">⋯</button>
       </div>
       ${descHtml}
-      <div class="metarow">${assigneeChip}${t.flagged?'<span class="flagchip" title="Blocked — awaiting something/someone">🚩</span>':''}${dueChip}${stepChip}<span class="meta">${metaLine(t)}</span></div>
+      <div class="metarow">${assigneeChip}${statusPill}${lanePill}${t.flagged?'<span class="flagchip" title="Blocked — awaiting something/someone">🚩</span>':''}${dueChip}${stepChip}<span class="meta">${metaLine(t)}</span></div>
       ${subsHtml}
       ${menu}
       ${moveMenu}
+      ${statusMenu}
+      ${laneMenu}
     </div>`;
   }
   function renderProject(p){
@@ -1571,6 +1726,8 @@
     if(dueEditId){ const di=document.querySelector('.due-edit input'); if(di){ di.focus(); try{ di.showPicker&&di.showPicker(); }catch(e){} } }
     if(projAddFor){ const pi=document.getElementById('newproj-'+projAddFor); if(pi) pi.focus(); }
     if(projEditId){ const pr=document.querySelector('.proj-rename[data-id="'+projEditId+'"]'); if(pr){ pr.focus(); pr.select(); } }
+    if(colAddFor){ const ci=document.getElementById('wsnewcol-'+colAddFor); if(ci) ci.focus(); }
+    if(colRenameId){ const cr=document.querySelector('.ws-rename'); if(cr){ cr.focus(); cr.select(); } }
   }
   function renderActivity(){
     const body=document.getElementById('actBody'); if(!body) return;
@@ -1580,13 +1737,14 @@
       substep_add:'added a subtask to',substep_done:'checked off a subtask in',substep_reopen:'reopened a subtask in',substep_del:'removed a subtask from',substep_edit:'edited a subtask in',substep_due:'set a subtask due date in',described:'updated the note on',
       proj_add:'created the project',proj_rename:'renamed the project to',proj_delete:'deleted the project',
       flagged:'flagged as blocked',unflagged:'cleared the flag on',
-      assigned:'assigned',proj_due:'set the due date on',sharedproj_delete:'deleted the shared project'};
+      assigned:'assigned',proj_due:'set the due date on',sharedproj_delete:'deleted the shared project',
+      status:'set the status of',moved_col:'moved to a column',view_change:'switched the view of',proj_col:'updated columns of'};
     body.innerHTML = B.activity.map(a=>{
       const who=F[a.actor]?F[a.actor].n:a.actor, c=F[a.actor]?F[a.actor].c:'#999';
       let detail='';
       if(a.verb==='moved'&&a.detail){ const p=a.detail.split('→'); detail=` <span class="vb">(${F[p[0]]?F[p[0]].n:p[0]} → ${F[p[1]]?F[p[1]].n:p[1]})</span>`; }
       else if(a.verb==='assigned'&&a.detail){ const p=a.detail.split('→'); detail=` <span class="vb">(${esc(p[0])} → ${esc(p[1])})</span>`; }
-      else if(a.detail && (a.verb.indexOf('substep')===0 || a.verb.indexOf('due')===0 || a.verb.indexOf('proj')===0)){ detail=` <span class="vb">— ${esc(a.detail)}</span>`; }
+      else if(a.detail){ detail=` <span class="vb">— ${esc(a.detail)}</span>`; }
       const crossTag=(a.owner&&a.actor!==a.owner&&(a.verb==='completed'||a.verb==='reopened'))?` <span class="vb">(${F[a.owner]?F[a.owner].n:a.owner}’s task)</span>`:'';
       let action='';
       if(a.verb==='deleted' && a.snapshot){
