@@ -1105,10 +1105,22 @@
     saveB(); renderBoard(); renderActivity();
   }
   function restoreFromActivity(logId){ restoreSnapshot(B.activity.find(x=>x.id===logId)); }
+  function undoMove(logId){
+    const e=B.activity.find(x=>x.id===logId); if(!e||!e.snapshot||!e.snapshot.taskId) return;
+    const t=B.tasks.find(x=>x.id===e.snapshot.taskId);
+    if(!t){ showToast('That task no longer exists'); e.restored=true; renderActivity(); return; }
+    t.owner=e.snapshot.fromOwner;
+    t.projectId=(e.snapshot.fromProj && B.projects.some(p=>p.id===e.snapshot.fromProj)) ? e.snapshot.fromProj : null;
+    e.restored=true;
+    logB('moved',t,(e.snapshot.toOwner||'')+'→'+e.snapshot.fromOwner);
+    saveB(); renderBoard(); renderActivity();
+  }
   function moveTask(id,newOwner){
     const t=B.tasks.find(x=>x.id===id); if(!t||t.owner===newOwner) return;
     const from=t.owner, fromProj=t.projectId; t.owner=newOwner; t.projectId=null; // lands in the new owner's General
-    logB('moved',t,from+'→'+newOwner); saveB(); renderBoard(); renderActivity();
+    logB('moved',t,from+'→'+newOwner);
+    const _mv=B.activity[0]; if(_mv) _mv.snapshot={taskId:t.id, fromOwner:from, fromProj:fromProj||null, toOwner:newOwner};
+    saveB(); renderBoard(); renderActivity();
     showToast('Moved to '+F[newOwner].n, ()=>{ t.owner=from; t.projectId=fromProj; logB('moved',t,newOwner+'→'+from); saveB(); renderBoard(); renderActivity(); });
   }
   function setMe(k){ B.me=k; saveB(); renderActingAs(); }
@@ -1433,6 +1445,10 @@
         const exists=B.tasks.some(x=>x.id===a.snapshot.id);
         action=(a.restored||exists)?`<span class="act-restored">✓ Restored</span>`
           :`<button class="act-restore" onclick="restoreFromActivity('${a.id}')">↩ Restore task</button>`;
+      } else if(a.verb==='moved' && a.snapshot && a.snapshot.taskId){
+        const exists=B.tasks.some(x=>x.id===a.snapshot.taskId);
+        action = a.restored ? `<span class="act-restored">✓ Undone</span>`
+          : (exists ? `<button class="act-restore" onclick="undoMove('${a.id}')">↩ Undo move</button>` : `<span class="act-restored" style="color:var(--soft)">task removed</span>`);
       }
       return `<div class="act"><span class="av" style="background:${c}">${who[0]}</span>
         <div class="txt"><b>${who}</b> <span class="vb">${VB[a.verb]||a.verb}</span> “${esc(a.text)}”${detail}${crossTag}
