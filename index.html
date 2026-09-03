@@ -573,6 +573,12 @@
             <div class="pb">
               <div class="acct-row"><div class="av" id="acAv"></div><div><div class="acct-nm" id="acNm"></div><div class="acct-em" id="acEm"></div><div class="acct-rl" id="acRl"></div></div></div>
               <hr class="acct-hr">
+              <h4 class="acct-h">Your title</h4>
+              <p style="font-size:12px;color:var(--soft);margin:-6px 0 12px">Shown under your name on the board.</p>
+              <div class="field"><input id="acRole" type="text" maxlength="40" placeholder="e.g. Product &amp; food" onkeydown="if(event.key==='Enter')saveMyRole()"></div>
+              <div id="acRoleMsg" class="login-err"></div>
+              <button class="btn red" onclick="saveMyRole()">Save title</button>
+              <hr class="acct-hr">
               <h4 class="acct-h">Your colour</h4>
               <div class="color-grid" id="acColors"></div>
               <hr class="acct-hr">
@@ -978,7 +984,17 @@
     const av=document.getElementById('acAv'), nm=document.getElementById('acNm'), em=document.getElementById('acEm'), rl=document.getElementById('acRl');
     if(av){ av.textContent=ME.name[0]; av.style.background=ME.color; av.style.color=textOn(ME.color); }
     if(nm) nm.textContent=ME.name; if(em) em.textContent=USER_EMAIL; if(rl) rl.textContent=ME.is_admin?'Admin':'Founder';
+    const ar=document.getElementById('acRole'); if(ar && document.activeElement!==ar) ar.value=ME.role||'';
     renderColors();
+  }
+  async function saveMyRole(){
+    const v=(document.getElementById('acRole').value||'').trim();
+    const msg=document.getElementById('acRoleMsg'); msg.classList.remove('ok'); msg.textContent='';
+    const { error } = await sb.rpc('set_my_role', { new_role:v });
+    if(error){ msg.textContent='Could not save title: '+error.message; return; }
+    ME.role=v; if(F[ME.key]) F[ME.key].role=v;
+    renderBoard();
+    msg.classList.add('ok'); msg.textContent='Title updated ✓';
   }
   function renderColors(){
     const el=document.getElementById('acColors'); if(!el||!ME) return;
