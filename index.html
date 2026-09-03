@@ -278,6 +278,10 @@
   .sub-cal:hover{opacity:1;}
   .sub-due{display:inline-flex;align-items:center;gap:3px;font:inherit;font-size:10.5px;font-weight:600;border:1px solid var(--line2);background:#fff;border-radius:99px;padding:2px 7px;cursor:pointer;color:var(--soft);white-space:nowrap;}
   .sub-due.ok{color:#2c7a44;border-color:#cfe6d5;background:var(--ok-bg);} .sub-due.soon{color:#9a6408;border-color:#eddcb4;background:var(--warn-bg);} .sub-due.overdue{color:#9c2a15;border-color:#f0c9c0;background:var(--danger-bg);} .sub-due.muted{color:var(--soft);}
+  .due-clr{border:none;background:transparent;color:var(--stone);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex:0 0 auto;}
+  .due-clr:hover{color:var(--danger);}
+  .save-status{font-size:11.5px;font-weight:600;padding:2px 4px;white-space:nowrap;transition:color .2s;}
+  .save-status.busy{color:var(--soft);} .save-status.ok{color:#2c7a44;} .save-status.fail{color:var(--danger);}
   .sub-dateedit{flex-basis:100%;display:flex;gap:6px;margin:2px 0 2px 23px;}
   .sub-dateedit input[type=date]{border:1px solid var(--accent);border-radius:6px;padding:4px 7px;font:inherit;font-size:11.5px;}
   .sub-dateedit input[type=date]:focus{outline:none;}
@@ -297,7 +301,7 @@
   .mm-cancel{font:inherit;font-size:11px;color:var(--soft);background:transparent;border:none;cursor:pointer;padding:3px 6px;}
   .mm-cancel:hover{color:var(--danger);}
   /* touch devices have no hover — keep card actions visible so they're tappable */
-  @media (hover: none){ .task .acts{display:flex;} }
+  @media (hover: none){ .task .acts{display:flex;} .sub-acts{display:inline-flex;} }
 
   /* completed dropdown (per column) */
   .done-sec{margin-top:12px;}
@@ -486,10 +490,12 @@
           <div class="build-bar">
             <div class="bb-left"><label class="preview-wrap">Sort <select id="sortSel" class="preview-as" onchange="setSort(this.value)"><option value="manual">Manual</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="due">Due date</option></select></label></div>
             <div class="build-actions">
+              <span id="saveStatus" class="save-status"></span>
               <button class="mini-btn" onclick="openActivity()">🕑 Activity</button>
             </div>
           </div>
           <div class="board" id="board"></div>
+          <input type="date" id="dpick" aria-hidden="true" tabindex="-1" style="position:fixed;opacity:0;width:1px;height:1px;border:0;padding:0;z-index:-1;">
 
           <!-- activity drawer -->
           <div class="drawer-scrim" id="actScrim" onclick="closeActivity()"></div>
@@ -797,13 +803,35 @@
 
   let _ready=false, _subbed=false;
   const _shadow = { projects:new Map(), tasks:new Map(), activity:new Map() };
-  function saveFail(where, error){ const msg=(error&&error.message)||'check your connection'; console.warn('SAVE FAIL', where, error); showToast('⚠ Couldn’t save — '+msg); }
+  let _pending=0, _failedAt=0, _retryT=null;
+  function setSaveStatus(){
+    const el=document.getElementById('saveStatus'); if(!el) return;
+    if(_pending>0){ el.textContent='Saving…'; el.className='save-status busy'; }
+    else if(_failedAt){ el.textContent='⚠ Not saved — retrying'; el.className='save-status fail'; }
+    else { el.textContent='✓ Saved'; el.className='save-status ok'; }
+  }
+  function scheduleRetry(){ if(_retryT) return; _retryT=setTimeout(()=>{ _retryT=null; if(_ready) saveB(); }, 4000); }
+  function saveFail(where, error){ const msg=(error&&error.message)||'check your connection'; console.warn('SAVE FAIL', where, error); _failedAt=Date.now(); setSaveStatus(); scheduleRetry(); showToast('⚠ Not saved — '+msg); }
+  function _track(p, where){ _pending++; setSaveStatus();
+    return p.then(res=>{ _pending--; if(res&&res.error){ saveFail(where,res.error); } else { if(_pending===0) _failedAt=0; setSaveStatus(); } })
+            .catch(e=>{ _pending--; saveFail(where,e); }); }
   function _syncColl(name, table, arr, toRow, allowDelete){
-    const cur=new Map();
+    const cur=new Map(); const shadow=_shadow[name];
     arr.forEach(item=>{ const row=toRow(item); const sig=JSON.stringify(row); cur.set(item.id,sig);
-      if(_shadow[name].get(item.id)!==sig){ sb.from(table).upsert(row).then(({error})=>{ if(error) saveFail(table+' save', error); }).catch(e=>saveFail(table+' save', e)); } });
-    if(allowDelete){ _shadow[name].forEach((_s,id)=>{ if(!cur.has(id)){ sb.from(table).delete().eq('id',id).then(({error})=>{ if(error) saveFail(table+' delete', error); }).catch(e=>saveFail(table+' delete', e)); } }); }
-    _shadow[name]=cur;
+      if(shadow.get(item.id)!==sig){ _track(sb.from(table).upsert(row).then(res=>{ if(!res.error) shadow.set(item.id,sig); return res; }), table+' save'); } });
+    if(allowDelete){ Array.from(shadow.keys()).forEach(id=>{ if(!cur.has(id)){ _track(sb.from(table).delete().eq('id',id).then(res=>{ if(!res.error) shadow.delete(id); return res; }), table+' delete'); } }); }
+    // shadow is updated per-item ONLY on confirmed success, so a failed save retries next time (never marked saved falsely)
+  }
+  // shared native date picker — opens directly on tap (no board re-render first), fixes the mobile scroll/auto-today glitch
+  let _dp=null;
+  function openDate(taskId, subId, cur, ev){
+    const el=document.getElementById('dpick'); if(!el) return;
+    _dp={taskId, subId:subId||null};
+    el.value=cur||'';
+    let r=null; try{ r=ev&&ev.currentTarget&&ev.currentTarget.getBoundingClientRect(); }catch(e){}
+    if(r){ el.style.left=Math.max(4,r.left)+'px'; el.style.top=(r.bottom+2)+'px'; } else { el.style.left='16px'; el.style.top='80px'; }
+    el.onchange=function(){ const v=el.value, c=_dp; _dp=null; if(!c) return; if(c.subId) setSubDue(c.taskId,c.subId,v); else setDue(c.taskId,v); };
+    try{ el.showPicker(); }catch(e){ el.focus(); el.click(); }
   }
   function saveB(){
     if(!_ready) return;
@@ -842,7 +870,20 @@
     }
     if(name==='tasks'){
       if(ev==='DELETE'){ B.tasks=B.tasks.filter(t=>t.id!==od.id); _shadow.tasks.delete(od.id); }
-      else { const t=rowToTask(nw); const i=B.tasks.findIndex(x=>x.id===t.id); if(i>=0)B.tasks[i]=t; else B.tasks.push(t); _shadow.tasks.set(t.id,JSON.stringify(taskToRow(t))); }
+      else {
+        const incoming=rowToTask(nw); const i=B.tasks.findIndex(x=>x.id===incoming.id);
+        if(i<0){ B.tasks.push(incoming); _shadow.tasks.set(incoming.id, JSON.stringify(taskToRow(incoming))); }
+        else {
+          const local=B.tasks[i];
+          _shadow.tasks.set(incoming.id, JSON.stringify(taskToRow(incoming))); // server truth
+          const incIds=new Set((incoming.subs||[]).map(s=>s.id));
+          const extras=(local.subs||[]).filter(s=>!incIds.has(s.id));      // steps added here but not yet on the server
+          if(editingId===incoming.id) incoming.text=local.text;            // don't wipe text being typed
+          if(extras.length) incoming.subs=(incoming.subs||[]).concat(extras);
+          B.tasks[i]=incoming;
+          if(extras.length) saveB();                                       // persist the merged union so no one's step is lost
+        }
+      }
       renderBoard();
     } else if(name==='projects'){
       if(ev==='DELETE'){ B.projects=B.projects.filter(p=>p.id!==od.id); _shadow.projects.delete(od.id); }
@@ -964,6 +1005,7 @@
     const ss=document.getElementById('sortSel'); if(ss) ss.value=sortMode;
     renderBoard(); renderActivity();
     subscribeRealtime();
+    setSaveStatus();
   }
   async function boot(){
     if(!window.supabase){ showLogin('Could not load (no connection). Refresh to try again.'); return; }
@@ -1191,7 +1233,7 @@
     const ab=F[t.createdBy]?F[t.createdBy].n:t.createdBy; return `${ab} · ${fmtShort(t.createdAt)}`;
   }
   function toggleMenu(id){ menuId = menuId===id?null:id; renderBoard(); }
-  function pickAct(id,act){ menuId=null; if(act==='date')startDue(id); else if(act==='step')openSub(id); else if(act==='move')openMove(id); else if(act==='flag')toggleFlag(id); else if(act==='edit')startEdit(id); else if(act==='delete')deleteTask(id); }
+  function pickAct(id,act){ menuId=null; if(act==='date'){ const t=B.tasks.find(x=>x.id===id); openDate(id,null,t&&t.due,null); } else if(act==='step')openSub(id); else if(act==='move')openMove(id); else if(act==='flag')toggleFlag(id); else if(act==='edit')startEdit(id); else if(act==='delete')deleteTask(id); }
   function toggleFlag(id){ const t=B.tasks.find(x=>x.id===id); if(!t) return; t.flagged=!t.flagged; logB(t.flagged?'flagged':'unflagged',t); saveB(); renderBoard(); renderActivity(); }
   function subInput(id){
     return `<div class="sub-add"><input id="subin-${id}" placeholder="Add a step…"
@@ -1205,14 +1247,12 @@
           onkeydown="if(event.key==='Enter')commitSubEdit('${t.id}','${s.id}',this.value); else if(event.key==='Escape')cancelSubEdit()"
           onblur="commitSubEdit('${t.id}','${s.id}',this.value)"></div>`;
     }
-    const dChip = (s.due && subDueId!==s.id) ? `<button class="sub-due ${s.done?'muted':dueStatus(s)}" onclick="startSubDue('${t.id}','${s.id}')">📅 ${dueLabel(s)}</button>` : '';
-    const dEdit = subDueId===s.id ? `<div class="sub-dateedit"><input type="date" value="${s.due||''}" onchange="setSubDue('${t.id}','${s.id}',this.value)" onblur="closeSubDue()">${s.due?`<button onmousedown="clearSubDue('${t.id}','${s.id}')">Clear</button>`:''}</div>` : '';
+    const dChip = s.due ? `<button class="sub-due ${s.done?'muted':dueStatus(s)}" onclick="openDate('${t.id}','${s.id}','${s.due}',event)">📅 ${dueLabel(s)}</button><button class="due-clr" title="Clear date" onclick="clearSubDue('${t.id}','${s.id}')">×</button>` : '';
     return `<div class="sub ${s.done?'done':''}">
       <span class="scb" onclick="toggleSub('${t.id}','${s.id}')">${s.done?'✓':''}</span>
       <span class="stx" onclick="startSubEdit('${t.id}','${s.id}')" title="Click to edit">${esc(s.text)}</span>
       ${dChip}
-      <span class="sub-acts"><button class="sub-cal" title="Step due date" onclick="startSubDue('${t.id}','${s.id}')">📅</button><button class="sdel" title="Remove step" onclick="delSub('${t.id}','${s.id}')">×</button></span>
-      ${dEdit}
+      <span class="sub-acts"><button class="sub-cal" title="Step due date" onclick="openDate('${t.id}','${s.id}','${s.due||''}',event)">📅</button><button class="sdel" title="Remove step" onclick="delSub('${t.id}','${s.id}')">×</button></span>
     </div>`;
   }
   function taskCard(t){
@@ -1224,7 +1264,7 @@
     const subs=t.subs||[], subDone=subs.filter(s=>s.done).length;
     const subsHtml = (subs.length || subAddId===t.id) ? `<div class="subs">${subs.map(s=>subRow(t,s)).join('')}${subAddId===t.id?subInput(t.id):''}</div>` : '';
     const stepChip = subs.length ? `<span class="stepc">◑ ${subDone}/${subs.length}</span>` : '';
-    const dueChip = (t.due && dueEditId!==t.id) ? `<button class="due ${t.done?'muted':dueStatus(t)}" onclick="startDue('${t.id}')">📅 ${dueLabel(t)}</button>` : '';
+    const dueChip = t.due ? `<button class="due ${t.done?'muted':dueStatus(t)}" onclick="openDate('${t.id}',null,'${t.due}',event)">📅 ${dueLabel(t)}</button><button class="due-clr" title="Clear date" onclick="clearDue('${t.id}')">×</button>` : '';
     let reorder='';
     if(menuId===t.id && !t.done && sortMode==='manual'){ const s=siblings(t), i=s.findIndex(x=>x.id===t.id);
       reorder=`<button onclick="moveUp('${t.id}')" ${i<=0?'disabled':''}>↑ Up</button><button onclick="moveDown('${t.id}')" ${i>=s.length-1?'disabled':''}>↓ Down</button>`; }
@@ -1238,10 +1278,7 @@
         <button class="del" onclick="pickAct('${t.id}','delete')">✕ Delete</button>
       </div>` : '';
     const moveMenu = moveMenuId===t.id ? `<div class="move-menu"><span class="mm-label">Move to</span>${FOUNDERS.filter(f=>f.k!==t.owner).map(f=>`<button class="mm-opt" onclick="doMove('${t.id}','${f.k}')"><span class="av" style="background:${f.c}">${f.n[0]}</span>${f.n}</button>`).join('')}<button class="mm-cancel" onclick="closeMove()">Cancel</button></div>` : '';
-    const dueEditor = dueEditId===t.id ? `<div class="due-edit">
-        <input type="date" value="${t.due||''}" onchange="setDue('${t.id}',this.value)" onblur="closeDue()">
-        ${t.due?`<button class="due-clear" onmousedown="clearDue('${t.id}')">Clear</button>`:''}
-      </div>` : '';
+    const dueEditor = '';
     return `<div class="task ${t.done?'done':''} ${t.flagged?'flagged':''}" draggable="true" data-id="${t.id}" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
       <div class="row1">
         <div class="cb" onclick="toggleDone('${t.id}')">${t.done?'✓':''}</div>
