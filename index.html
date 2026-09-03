@@ -1244,7 +1244,10 @@
   function closeDue(){ dueEditId=null; renderBoard(); }
   function setDue(id,val){
     const t=B.tasks.find(x=>x.id===id); dueEditId=null;
-    if(t&&val){ t.due=val; logB('due_set',t,'due '+new Date(val+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})); saveB(); }
+    if(t){
+      if(val){ t.due=val; logB('due_set',t,'due '+new Date(val+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})); saveB(); }
+      else if(t.due){ t.due=null; logB('due_clear',t); saveB(); }   // native picker "Clear" sends ''
+    }
     renderBoard(); renderActivity();
   }
   function clearDue(id){ const t=B.tasks.find(x=>x.id===id); dueEditId=null; if(t){ t.due=null; logB('due_clear',t); saveB(); } renderBoard(); renderActivity(); }
@@ -1290,7 +1293,10 @@
   function setSubDue(taskId,subId,val){
     const t=B.tasks.find(x=>x.id===taskId); subDueId=null;
     const s=t&&(t.subs||[]).find(x=>x.id===subId);
-    if(s&&val){ s.due=val; logB('substep_due',t,'“'+s.text+'” due '+new Date(val+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})); saveB(); }
+    if(s){
+      if(val){ s.due=val; logB('substep_due',t,'“'+s.text+'” due '+new Date(val+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})); saveB(); }
+      else if(s.due){ s.due=null; logB('substep_due',t,'cleared the date on “'+s.text+'”'); saveB(); }   // native picker "Clear" sends ''
+    }
     renderBoard(); renderActivity();
   }
   function clearSubDue(taskId,subId){ const t=B.tasks.find(x=>x.id===taskId); subDueId=null; const s=t&&(t.subs||[]).find(x=>x.id===subId); if(s){ s.due=null; saveB(); } renderBoard(); renderActivity(); }
