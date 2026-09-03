@@ -264,11 +264,24 @@
   .due-clear:hover{color:var(--danger);}
   /* subtasks */
   .subs{margin-top:9px;padding-left:29px;display:flex;flex-direction:column;gap:4px;}
-  .sub{display:flex;align-items:center;gap:8px;font-size:12.5px;}
+  .sub{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12.5px;}
   .sub .scb{width:15px;height:15px;flex:0 0 15px;border-radius:5px;border:1.5px solid var(--line2);background:#fff;cursor:pointer;display:grid;place-items:center;font-size:10px;color:#fff;transition:.12s;}
   .sub .scb:hover{border-color:var(--ok);}
   .sub.done .scb{background:var(--ok);border-color:var(--ok);}
-  .sub .stx{flex:1;color:var(--ink);line-height:1.35;word-break:break-word;}
+  .sub .stx{flex:1;min-width:60px;color:var(--ink);line-height:1.35;word-break:break-word;cursor:text;}
+  .sub .stx:hover{text-decoration:underline dotted;text-underline-offset:2px;}
+  .sub-edit{flex:1;min-width:80px;border:1px solid var(--accent);border-radius:6px;padding:4px 7px;font:inherit;font-size:12.5px;}
+  .sub-edit:focus{outline:none;}
+  .sub-acts{display:none;align-items:center;gap:2px;margin-left:auto;flex:0 0 auto;}
+  .sub:hover .sub-acts{display:inline-flex;}
+  .sub-cal{border:none;background:transparent;cursor:pointer;font-size:11px;line-height:1;padding:0 2px;opacity:.65;}
+  .sub-cal:hover{opacity:1;}
+  .sub-due{display:inline-flex;align-items:center;gap:3px;font:inherit;font-size:10.5px;font-weight:600;border:1px solid var(--line2);background:#fff;border-radius:99px;padding:2px 7px;cursor:pointer;color:var(--soft);white-space:nowrap;}
+  .sub-due.ok{color:#2c7a44;border-color:#cfe6d5;background:var(--ok-bg);} .sub-due.soon{color:#9a6408;border-color:#eddcb4;background:var(--warn-bg);} .sub-due.overdue{color:#9c2a15;border-color:#f0c9c0;background:var(--danger-bg);} .sub-due.muted{color:var(--soft);}
+  .sub-dateedit{flex-basis:100%;display:flex;gap:6px;margin:2px 0 2px 23px;}
+  .sub-dateedit input[type=date]{border:1px solid var(--accent);border-radius:6px;padding:4px 7px;font:inherit;font-size:11.5px;}
+  .sub-dateedit input[type=date]:focus{outline:none;}
+  .sub-dateedit button{border:none;background:var(--sand2);border-radius:6px;padding:4px 9px;font:inherit;font-size:11px;color:var(--soft);cursor:pointer;}
   .sub.done .stx{color:var(--soft);text-decoration:line-through;}
   .sub .sdel{border:none;background:transparent;color:var(--line2);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;opacity:0;}
   .sub:hover .sdel{opacity:1;color:var(--soft);}
@@ -716,6 +729,7 @@
   let B = { projects:[], tasks:[], activity:[], me:'aonali' };
   let editingId=null, dragId=null, undoTimer=null, skipBlur=false;
   let dueEditId=null, subAddId=null, skipSubBlur=false, moveMenuId=null, menuId=null;
+  let subEditId=null, subDueId=null, skipSubEdit=false;
   let projEditId=null, projAddFor=null, skipProjBlur=false, projDelId=null;
   const doneOpen = new Set();
   const projOpen = new Set();
@@ -1066,6 +1080,26 @@
   function subBlur(id,val){ if(skipSubBlur){ skipSubBlur=false; return; } const text=(val||'').trim(); if(text)pushSub(id,text); subAddId=null; renderBoard(); renderActivity(); }
   function toggleSub(taskId,subId){ const t=B.tasks.find(x=>x.id===taskId); if(!t)return; const s=(t.subs||[]).find(x=>x.id===subId); if(!s)return; s.done=!s.done; logB(s.done?'substep_done':'substep_reopen',t,'“'+s.text+'”'); saveB(); renderBoard(); renderActivity(); }
   function delSub(taskId,subId){ const t=B.tasks.find(x=>x.id===taskId); if(!t)return; const i=(t.subs||[]).findIndex(x=>x.id===subId); if(i<0)return; const s=t.subs[i]; t.subs.splice(i,1); logB('substep_del',t,'“'+s.text+'”'); saveB(); renderBoard(); renderActivity(); }
+  // edit a step's text
+  function startSubEdit(taskId,subId){ subEditId=subId; subDueId=null; renderBoard(); }
+  function cancelSubEdit(){ skipSubEdit=true; subEditId=null; renderBoard(); }
+  function commitSubEdit(taskId,subId,val){
+    if(skipSubEdit){ skipSubEdit=false; return; }
+    const t=B.tasks.find(x=>x.id===taskId); subEditId=null;
+    const s=t&&(t.subs||[]).find(x=>x.id===subId); const nv=(val||'').trim();
+    if(s&&nv&&nv!==s.text){ const old=s.text; s.text=nv; logB('substep_edit',t,'“'+old+'” → “'+nv+'”'); saveB(); }
+    renderBoard(); renderActivity();
+  }
+  // per-step due date
+  function startSubDue(taskId,subId){ subDueId=subId; subEditId=null; renderBoard(); }
+  function closeSubDue(){ subDueId=null; renderBoard(); }
+  function setSubDue(taskId,subId,val){
+    const t=B.tasks.find(x=>x.id===taskId); subDueId=null;
+    const s=t&&(t.subs||[]).find(x=>x.id===subId);
+    if(s&&val){ s.due=val; logB('substep_due',t,'“'+s.text+'” due '+new Date(val+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})); saveB(); }
+    renderBoard(); renderActivity();
+  }
+  function clearSubDue(taskId,subId){ const t=B.tasks.find(x=>x.id===taskId); subDueId=null; const s=t&&(t.subs||[]).find(x=>x.id===subId); if(s){ s.due=null; saveB(); } renderBoard(); renderActivity(); }
 
   /* ---- completed dropdown ---- */
   function toggleDoneCol(k){ doneOpen.has(k)?doneOpen.delete(k):doneOpen.add(k); renderBoard(); }
@@ -1164,6 +1198,23 @@
       onkeydown="if(event.key==='Enter'){event.preventDefault();addSub('${id}',this.value)} else if(event.key==='Escape')closeSub()"
       onblur="subBlur('${id}',this.value)"></div>`;
   }
+  function subRow(t,s){
+    if(subEditId===s.id){
+      return `<div class="sub ${s.done?'done':''}"><span class="scb" onclick="toggleSub('${t.id}','${s.id}')">${s.done?'✓':''}</span>
+        <input class="sub-edit" data-sid="${s.id}" value="${esc(s.text)}"
+          onkeydown="if(event.key==='Enter')commitSubEdit('${t.id}','${s.id}',this.value); else if(event.key==='Escape')cancelSubEdit()"
+          onblur="commitSubEdit('${t.id}','${s.id}',this.value)"></div>`;
+    }
+    const dChip = (s.due && subDueId!==s.id) ? `<button class="sub-due ${s.done?'muted':dueStatus(s)}" onclick="startSubDue('${t.id}','${s.id}')">📅 ${dueLabel(s)}</button>` : '';
+    const dEdit = subDueId===s.id ? `<div class="sub-dateedit"><input type="date" value="${s.due||''}" onchange="setSubDue('${t.id}','${s.id}',this.value)" onblur="closeSubDue()">${s.due?`<button onmousedown="clearSubDue('${t.id}','${s.id}')">Clear</button>`:''}</div>` : '';
+    return `<div class="sub ${s.done?'done':''}">
+      <span class="scb" onclick="toggleSub('${t.id}','${s.id}')">${s.done?'✓':''}</span>
+      <span class="stx" onclick="startSubEdit('${t.id}','${s.id}')" title="Click to edit">${esc(s.text)}</span>
+      ${dChip}
+      <span class="sub-acts"><button class="sub-cal" title="Step due date" onclick="startSubDue('${t.id}','${s.id}')">📅</button><button class="sdel" title="Remove step" onclick="delSub('${t.id}','${s.id}')">×</button></span>
+      ${dEdit}
+    </div>`;
+  }
   function taskCard(t){
     if(editingId===t.id){
       return `<div class="task ${t.done?'done':''}"><textarea class="edit-in" data-id="${t.id}" rows="2"
@@ -1171,12 +1222,7 @@
         onblur="commitEdit('${t.id}',this.value)">${esc(t.text)}</textarea></div>`;
     }
     const subs=t.subs||[], subDone=subs.filter(s=>s.done).length;
-    const subsHtml = (subs.length || subAddId===t.id) ? `<div class="subs">${subs.map(s=>`
-        <div class="sub ${s.done?'done':''}">
-          <span class="scb" onclick="toggleSub('${t.id}','${s.id}')">${s.done?'✓':''}</span>
-          <span class="stx">${esc(s.text)}</span>
-          <button class="sdel" title="Remove step" onclick="delSub('${t.id}','${s.id}')">×</button>
-        </div>`).join('')}${subAddId===t.id?subInput(t.id):''}</div>` : '';
+    const subsHtml = (subs.length || subAddId===t.id) ? `<div class="subs">${subs.map(s=>subRow(t,s)).join('')}${subAddId===t.id?subInput(t.id):''}</div>` : '';
     const stepChip = subs.length ? `<span class="stepc">◑ ${subDone}/${subs.length}</span>` : '';
     const dueChip = (t.due && dueEditId!==t.id) ? `<button class="due ${t.done?'muted':dueStatus(t)}" onclick="startDue('${t.id}')">📅 ${dueLabel(t)}</button>` : '';
     let reorder='';
@@ -1292,6 +1338,8 @@
     }).join('');
     if(editingId){ const inp=document.querySelector('.edit-in[data-id="'+editingId+'"]'); if(inp){ inp.focus(); inp.select(); } }
     if(subAddId){ const si=document.getElementById('subin-'+subAddId); if(si) si.focus(); }
+    if(subEditId){ const se=document.querySelector('.sub-edit[data-sid="'+subEditId+'"]'); if(se){ se.focus(); se.select(); } }
+    if(subDueId){ const sd=document.querySelector('.sub-dateedit input'); if(sd){ sd.focus(); try{ sd.showPicker&&sd.showPicker(); }catch(e){} } }
     if(dueEditId){ const di=document.querySelector('.due-edit input'); if(di){ di.focus(); try{ di.showPicker&&di.showPicker(); }catch(e){} } }
     if(projAddFor){ const pi=document.getElementById('newproj-'+projAddFor); if(pi) pi.focus(); }
     if(projEditId){ const pr=document.querySelector('.proj-rename[data-id="'+projEditId+'"]'); if(pr){ pr.focus(); pr.select(); } }
@@ -1301,7 +1349,7 @@
     if(!B.activity.length){ body.innerHTML=`<div class="act-empty">No activity yet.<br>Every action on a task will be recorded here.</div>`; return; }
     const VB={added:'added',completed:'completed',reopened:'reopened',edited:'edited',deleted:'deleted',moved:'moved',restored:'restored',
       due_set:'set the due date on',due_clear:'cleared the due date on',
-      substep_add:'added a step to',substep_done:'checked off a step in',substep_reopen:'reopened a step in',substep_del:'removed a step from',
+      substep_add:'added a step to',substep_done:'checked off a step in',substep_reopen:'reopened a step in',substep_del:'removed a step from',substep_edit:'edited a step in',substep_due:'set a step due date in',
       proj_add:'created the project',proj_rename:'renamed the project to',proj_delete:'deleted the project',
       flagged:'flagged as blocked',unflagged:'cleared the flag on'};
     body.innerHTML = B.activity.map(a=>{
