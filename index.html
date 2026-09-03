@@ -250,6 +250,12 @@
   /* card controls row (steps + due) — sits below the task, above the meta */
   .cardctl{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px;padding-left:29px;}
   .stepc{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--soft);font-weight:600;}
+  .stepc.toggle{border:none;background:transparent;cursor:pointer;padding:2px 4px;border-radius:6px;font:inherit;font-weight:600;}
+  .stepc.toggle:hover{background:var(--sand2);color:var(--ink);}
+  .task-desc{font-size:12px;color:var(--soft);line-height:1.45;margin:5px 0 0;padding-left:29px;cursor:text;white-space:pre-wrap;word-break:break-word;}
+  .task-desc:hover{color:var(--ink);}
+  .desc-edit{display:block;width:calc(100% - 29px);margin:6px 0 0 29px;border:1px solid var(--accent);border-radius:8px;padding:7px 9px;font:inherit;font-size:12px;line-height:1.45;resize:vertical;}
+  .desc-edit:focus{outline:none;}
   .ctl-ghost{display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:11px;font-weight:600;color:var(--soft);background:transparent;border:1px dashed var(--line2);border-radius:99px;padding:3px 9px;cursor:pointer;transition:.12s;}
   .ctl-ghost:hover{border-style:solid;color:var(--ink);background:#fff;}
   .due{display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:11px;font-weight:600;border:1px solid var(--line2);background:#fff;border-radius:99px;padding:3px 9px;cursor:pointer;color:var(--soft);white-space:nowrap;}
@@ -735,10 +741,11 @@
   let B = { projects:[], tasks:[], activity:[], me:'aonali' };
   let editingId=null, dragId=null, undoTimer=null, skipBlur=false;
   let dueEditId=null, subAddId=null, skipSubBlur=false, moveMenuId=null, menuId=null;
-  let subEditId=null, subDueId=null, skipSubEdit=false;
+  let subEditId=null, subDueId=null, skipSubEdit=false, descEditId=null, skipDescBlur=false;
   let projEditId=null, projAddFor=null, skipProjBlur=false, projDelId=null;
   const doneOpen = new Set();
   const projOpen = new Set();
+  const subsOpen = new Set();
   let sortMode = (function(){ try{ return localStorage.getItem('zaha_sort')||'manual'; }catch(e){ return 'manual'; } })();
   function sortTasks(arr){
     const a=arr.slice();
@@ -794,14 +801,14 @@
      realtime pulls other founders' changes back in.
      ============================================================ */
   const toISO = ms => ms ? new Date(ms).toISOString() : null;
-  const taskToRow = t => ({ id:t.id, owner:t.owner, project_id:t.projectId||null, text:t.text, done:!!t.done, flagged:!!t.flagged, due:t.due||null, subs:t.subs||[], sort_order:(t.order??0), created_at:toISO(t.createdAt), created_by:t.createdBy||null, done_at:toISO(t.doneAt), done_by:t.doneBy||null });
-  const rowToTask = r => ({ id:r.id, owner:r.owner, projectId:r.project_id||null, text:r.text, done:!!r.done, flagged:!!r.flagged, due:r.due||null, subs:Array.isArray(r.subs)?r.subs:[], order:r.sort_order??0, createdAt:r.created_at?new Date(r.created_at).getTime():Date.now(), createdBy:r.created_by||null, doneAt:r.done_at?new Date(r.done_at).getTime():null, doneBy:r.done_by||null });
+  function taskToRow(t){ const r={ id:t.id, owner:t.owner, project_id:t.projectId||null, text:t.text, done:!!t.done, flagged:!!t.flagged, due:t.due||null, subs:t.subs||[], sort_order:(t.order??0), created_at:toISO(t.createdAt), created_by:t.createdBy||null, done_at:toISO(t.doneAt), done_by:t.doneBy||null }; if(_hasDesc) r.description=t.desc||null; return r; }
+  const rowToTask = r => ({ id:r.id, owner:r.owner, projectId:r.project_id||null, text:r.text, done:!!r.done, flagged:!!r.flagged, due:r.due||null, subs:Array.isArray(r.subs)?r.subs:[], order:r.sort_order??0, createdAt:r.created_at?new Date(r.created_at).getTime():Date.now(), createdBy:r.created_by||null, doneAt:r.done_at?new Date(r.done_at).getTime():null, doneBy:r.done_by||null, desc:r.description||null });
   const projectToRow = p => ({ id:p.id, owner:p.owner, name:p.name });
   const rowToProject = r => ({ id:r.id, owner:r.owner, name:r.name });
   const activityToRow = a => ({ id:a.id, ts:toISO(a.ts), actor:a.actor, verb:a.verb, text:a.text||null, owner:a.owner||null, detail:a.detail||null, snapshot:a.snapshot||null, restored:!!a.restored });
   const rowToActivity = r => ({ id:r.id, ts:r.ts?new Date(r.ts).getTime():Date.now(), actor:r.actor, verb:r.verb, text:r.text, owner:r.owner, detail:r.detail, snapshot:r.snapshot, restored:!!r.restored });
 
-  let _ready=false, _subbed=false;
+  let _ready=false, _subbed=false, _hasDesc=false;
   const _shadow = { projects:new Map(), tasks:new Map(), activity:new Map() };
   let _pending=0, _failedAt=0, _retryT=null;
   function setSaveStatus(){
@@ -991,6 +998,7 @@
     const me = founders.find(f=>(f.email||'').toLowerCase()===(user.email||'').toLowerCase());
     if(!me){ await sb.auth.signOut(); showLogin('This account isn’t set up as a founder yet.'); return; }
     ME=me; USER_EMAIL=user.email||''; B.me=me.key; IS_ADMIN=!!me.is_admin;
+    try{ const pr=await sb.from('tasks').select('description').limit(1); _hasDesc=!pr.error; }catch(e){ _hasDesc=false; }
     await loadAll();
     _ready=true;
     const av=document.getElementById('whoAv'), nm=document.getElementById('whoNm'), rl=document.getElementById('whoRl');
@@ -1115,7 +1123,18 @@
   function clearDue(id){ const t=B.tasks.find(x=>x.id===id); dueEditId=null; if(t){ t.due=null; logB('due_clear',t); saveB(); } renderBoard(); renderActivity(); }
 
   /* ---- subtasks (steps) ---- */
-  function openSub(id){ subAddId=id; renderBoard(); }
+  function openSub(id){ subsOpen.add(id); subAddId=id; renderBoard(); }
+  function toggleSubs(id){ subsOpen.has(id)?subsOpen.delete(id):subsOpen.add(id); renderBoard(); }
+  // task description (a note; not a completable subtask)
+  function startDesc(id){ descEditId=id; renderBoard(); }
+  function cancelDesc(){ skipDescBlur=true; descEditId=null; renderBoard(); }
+  function commitDesc(id,val){
+    if(skipDescBlur){ skipDescBlur=false; return; }
+    const t=B.tasks.find(x=>x.id===id); descEditId=null;
+    const nv=(val||'').trim(); const old=t?(t.desc||''):'';
+    if(t && nv!==old){ t.desc=nv||null; logB('described',t); saveB(); }
+    renderBoard(); renderActivity();
+  }
   function closeSub(){ skipSubBlur=true; subAddId=null; renderBoard(); }
   function pushSub(id,text){ const t=B.tasks.find(x=>x.id===id); if(!t)return; t.subs=t.subs||[]; t.subs.push({id:uid(),text,done:false}); logB('substep_add',t,'“'+text+'”'); saveB(); }
   function addSub(id,val){ const text=(val||'').trim(); if(!text)return; pushSub(id,text); skipSubBlur=true; subAddId=id; renderBoard(); const si=document.getElementById('subin-'+id); if(si){ si.value=''; si.focus(); } renderActivity(); }
@@ -1233,10 +1252,10 @@
     const ab=F[t.createdBy]?F[t.createdBy].n:t.createdBy; return `${ab} · ${fmtShort(t.createdAt)}`;
   }
   function toggleMenu(id){ menuId = menuId===id?null:id; renderBoard(); }
-  function pickAct(id,act){ menuId=null; if(act==='date'){ const t=B.tasks.find(x=>x.id===id); openDate(id,null,t&&t.due,null); } else if(act==='step')openSub(id); else if(act==='move')openMove(id); else if(act==='flag')toggleFlag(id); else if(act==='edit')startEdit(id); else if(act==='delete')deleteTask(id); }
+  function pickAct(id,act){ menuId=null; if(act==='date'){ const t=B.tasks.find(x=>x.id===id); openDate(id,null,t&&t.due,null); } else if(act==='step')openSub(id); else if(act==='move')openMove(id); else if(act==='flag')toggleFlag(id); else if(act==='desc')startDesc(id); else if(act==='edit')startEdit(id); else if(act==='delete')deleteTask(id); }
   function toggleFlag(id){ const t=B.tasks.find(x=>x.id===id); if(!t) return; t.flagged=!t.flagged; logB(t.flagged?'flagged':'unflagged',t); saveB(); renderBoard(); renderActivity(); }
   function subInput(id){
-    return `<div class="sub-add"><input id="subin-${id}" placeholder="Add a step…"
+    return `<div class="sub-add"><input id="subin-${id}" placeholder="Add a subtask…"
       onkeydown="if(event.key==='Enter'){event.preventDefault();addSub('${id}',this.value)} else if(event.key==='Escape')closeSub()"
       onblur="subBlur('${id}',this.value)"></div>`;
   }
@@ -1252,7 +1271,7 @@
       <span class="scb" onclick="toggleSub('${t.id}','${s.id}')">${s.done?'✓':''}</span>
       <span class="stx" onclick="startSubEdit('${t.id}','${s.id}')" title="Click to edit">${esc(s.text)}</span>
       ${dChip}
-      <span class="sub-acts"><button class="sub-cal" title="Step due date" onclick="openDate('${t.id}','${s.id}','${s.due||''}',event)">📅</button><button class="sdel" title="Remove step" onclick="delSub('${t.id}','${s.id}')">×</button></span>
+      <span class="sub-acts"><button class="sub-cal" title="Subtask due date" onclick="openDate('${t.id}','${s.id}','${s.due||''}',event)">📅</button><button class="sdel" title="Remove subtask" onclick="delSub('${t.id}','${s.id}')">×</button></span>
     </div>`;
   }
   function taskCard(t){
@@ -1262,8 +1281,12 @@
         onblur="commitEdit('${t.id}',this.value)">${esc(t.text)}</textarea></div>`;
     }
     const subs=t.subs||[], subDone=subs.filter(s=>s.done).length;
-    const subsHtml = (subs.length || subAddId===t.id) ? `<div class="subs">${subs.map(s=>subRow(t,s)).join('')}${subAddId===t.id?subInput(t.id):''}</div>` : '';
-    const stepChip = subs.length ? `<span class="stepc">◑ ${subDone}/${subs.length}</span>` : '';
+    const showSubs = subsOpen.has(t.id) || subAddId===t.id;
+    const subsHtml = (showSubs && (subs.length || subAddId===t.id)) ? `<div class="subs">${subs.map(s=>subRow(t,s)).join('')}${subAddId===t.id?subInput(t.id):''}</div>` : '';
+    const stepChip = subs.length ? `<button class="stepc toggle" onclick="toggleSubs('${t.id}')" title="Show/hide subtasks">◑ ${subDone}/${subs.length} ${showSubs?'▾':'▸'}</button>` : '';
+    const descHtml = descEditId===t.id
+      ? `<textarea class="desc-edit" data-id="${t.id}" rows="2" placeholder="Add a description…" onkeydown="if(event.key==='Escape')cancelDesc()" onblur="commitDesc('${t.id}',this.value)">${esc(t.desc||'')}</textarea>`
+      : (t.desc ? `<div class="task-desc" onclick="startDesc('${t.id}')" title="Click to edit">${esc(t.desc)}</div>` : '');
     const dueChip = t.due ? `<button class="due ${t.done?'muted':dueStatus(t)}" onclick="openDate('${t.id}',null,'${t.due}',event)">📅 ${dueLabel(t)}</button><button class="due-clr" title="Clear date" onclick="clearDue('${t.id}')">×</button>` : '';
     let reorder='';
     if(menuId===t.id && !t.done && sortMode==='manual'){ const s=siblings(t), i=s.findIndex(x=>x.id===t.id);
@@ -1271,25 +1294,25 @@
     const menu = menuId===t.id ? `<div class="cardmenu">
         <button class="${t.flagged?'flagon':''}" onclick="pickAct('${t.id}','flag')">🚩 ${t.flagged?'Unflag':'Flag blocked'}</button>
         <button onclick="pickAct('${t.id}','date')">📅 Date</button>
-        <button onclick="pickAct('${t.id}','step')">＋ Step</button>
+        <button onclick="pickAct('${t.id}','step')">＋ Subtask</button>
+        <button onclick="pickAct('${t.id}','desc')">📝 ${t.desc?'Edit note':'Note'}</button>
         <button onclick="pickAct('${t.id}','move')">⇄ Move</button>
         ${reorder}
         <button onclick="pickAct('${t.id}','edit')">✎ Edit</button>
         <button class="del" onclick="pickAct('${t.id}','delete')">✕ Delete</button>
       </div>` : '';
     const moveMenu = moveMenuId===t.id ? `<div class="move-menu"><span class="mm-label">Move to</span>${FOUNDERS.filter(f=>f.k!==t.owner).map(f=>`<button class="mm-opt" onclick="doMove('${t.id}','${f.k}')"><span class="av" style="background:${f.c}">${f.n[0]}</span>${f.n}</button>`).join('')}<button class="mm-cancel" onclick="closeMove()">Cancel</button></div>` : '';
-    const dueEditor = '';
     return `<div class="task ${t.done?'done':''} ${t.flagged?'flagged':''}" draggable="true" data-id="${t.id}" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
       <div class="row1">
         <div class="cb" onclick="toggleDone('${t.id}')">${t.done?'✓':''}</div>
         <div class="tx">${esc(t.text)}</div>
         <button class="menu-btn ${menuId===t.id?'on':''}" title="Actions" onclick="toggleMenu('${t.id}')">⋯</button>
       </div>
-      ${subsHtml}
+      ${descHtml}
       <div class="metarow">${t.flagged?'<span class="flagchip" title="Blocked — awaiting something/someone">🚩</span>':''}${dueChip}${stepChip}<span class="meta">${metaLine(t)}</span></div>
+      ${subsHtml}
       ${menu}
       ${moveMenu}
-      ${dueEditor}
     </div>`;
   }
   function renderProject(p){
@@ -1376,6 +1399,7 @@
     if(editingId){ const inp=document.querySelector('.edit-in[data-id="'+editingId+'"]'); if(inp){ inp.focus(); inp.select(); } }
     if(subAddId){ const si=document.getElementById('subin-'+subAddId); if(si) si.focus(); }
     if(subEditId){ const se=document.querySelector('.sub-edit[data-sid="'+subEditId+'"]'); if(se){ se.focus(); se.select(); } }
+    if(descEditId){ const de=document.querySelector('.desc-edit[data-id="'+descEditId+'"]'); if(de){ de.focus(); de.setSelectionRange(de.value.length,de.value.length); } }
     if(subDueId){ const sd=document.querySelector('.sub-dateedit input'); if(sd){ sd.focus(); try{ sd.showPicker&&sd.showPicker(); }catch(e){} } }
     if(dueEditId){ const di=document.querySelector('.due-edit input'); if(di){ di.focus(); try{ di.showPicker&&di.showPicker(); }catch(e){} } }
     if(projAddFor){ const pi=document.getElementById('newproj-'+projAddFor); if(pi) pi.focus(); }
@@ -1386,7 +1410,7 @@
     if(!B.activity.length){ body.innerHTML=`<div class="act-empty">No activity yet.<br>Every action on a task will be recorded here.</div>`; return; }
     const VB={added:'added',completed:'completed',reopened:'reopened',edited:'edited',deleted:'deleted',moved:'moved',restored:'restored',
       due_set:'set the due date on',due_clear:'cleared the due date on',
-      substep_add:'added a step to',substep_done:'checked off a step in',substep_reopen:'reopened a step in',substep_del:'removed a step from',substep_edit:'edited a step in',substep_due:'set a step due date in',
+      substep_add:'added a subtask to',substep_done:'checked off a subtask in',substep_reopen:'reopened a subtask in',substep_del:'removed a subtask from',substep_edit:'edited a subtask in',substep_due:'set a subtask due date in',described:'updated the note on',
       proj_add:'created the project',proj_rename:'renamed the project to',proj_delete:'deleted the project',
       flagged:'flagged as blocked',unflagged:'cleared the flag on'};
     body.innerHTML = B.activity.map(a=>{
