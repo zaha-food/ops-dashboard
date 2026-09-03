@@ -294,7 +294,9 @@
   .sub-cal:hover{opacity:1;}
   .sub-due{display:inline-flex;align-items:center;gap:3px;font:inherit;font-size:10.5px;font-weight:600;border:1px solid var(--line2);background:#fff;border-radius:99px;padding:2px 7px;cursor:pointer;color:var(--soft);white-space:nowrap;}
   .sub-due.ok{color:#2c7a44;border-color:#cfe6d5;background:var(--ok-bg);} .sub-due.soon{color:#9a6408;border-color:#eddcb4;background:var(--warn-bg);} .sub-due.overdue{color:#9c2a15;border-color:#f0c9c0;background:var(--danger-bg);} .sub-due.muted{color:var(--soft);}
-  .due, .sub-due, .sub-cal, .cardmenu label.cmi{position:relative;}
+  .due, .sub-due, .sub-cal, .cmi{position:relative;overflow:hidden;}
+  .proj-acts .cmi{display:inline-flex;align-items:center;font:inherit;font-size:11px;font-weight:600;color:var(--soft);cursor:pointer;padding:2px 0;}
+  .proj-acts .cmi:hover{color:var(--ink);}
   .due-ovl{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;margin:0;padding:0;cursor:pointer;-webkit-appearance:none;background:transparent;}
   .cardmenu label.cmi{display:inline-flex;align-items:center;font:inherit;font-size:11px;font-weight:600;color:var(--ink);background:var(--sand);border:1px solid var(--line2);border-radius:7px;padding:5px 9px;cursor:pointer;}
   .cardmenu label.cmi:hover{background:#fff;border-color:var(--ink);}
