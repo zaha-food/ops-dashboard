@@ -878,7 +878,7 @@
   function applyRT(name, payload){
     const ev=payload.eventType, nw=payload.new, od=payload.old;
     if(name==='founders'){
-      if(ev!=='DELETE' && nw){ const fo={k:nw.key,n:nw.name,role:nw.role,c:nw.color}; const i=FOUNDERS.findIndex(x=>x.k===nw.key); if(i>=0)FOUNDERS[i]=fo; else FOUNDERS.push(fo); F[fo.k]=fo; if(ME&&ME.key===nw.key){ ME.color=nw.color; const wa=document.getElementById('whoAv'); if(wa) wa.style.background=nw.color; } }
+      if(ev!=='DELETE' && nw){ const fo={k:nw.key,n:nw.name,role:nw.role,c:nw.color}; const i=FOUNDERS.findIndex(x=>x.k===nw.key); if(i>=0)FOUNDERS[i]=fo; else FOUNDERS.push(fo); F[fo.k]=fo; if(ME&&ME.key===nw.key){ ME.color=nw.color; const wa=document.getElementById('whoAv'); if(wa){ wa.style.background=nw.color; wa.style.color=textOn(nw.color); } } }
       renderBoard(); renderActivity(); if(ME) fillAccount();
       return;
     }
@@ -970,11 +970,13 @@
     document.getElementById('acPass').value=''; document.getElementById('acPass2').value='';
     msg.classList.add('ok'); msg.textContent='Password updated ✓';
   }
-  const COLOR_OPTIONS=['#D8452F','#E07A2C','#E3A82C','#7BA23F','#3FA35B','#2FA38A','#2E8FB0','#3A6FB0','#6C5CB0','#9E4FA6','#C64F86','#5C6B7A'];
+  const COLOR_OPTIONS=['#D8452F','#E07A2C','#E3A82C','#7BA23F','#3FA35B','#2FA38A','#2E8FB0','#3A6FB0','#6C5CB0','#9E4FA6','#C64F86','#5C6B7A','#F2A6C2','#8CBFE6','#B79CE0','#7FCBA4','#2A2A2A'];
+  // pick readable text colour (dark on light backgrounds, white on dark) for avatars
+  function textOn(hex){ const h=(hex||'').replace('#',''); if(h.length<6) return '#fff'; const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return (0.299*r+0.587*g+0.114*b)>150 ? '#222' : '#fff'; }
   function fillAccount(){
     if(!ME) return;
     const av=document.getElementById('acAv'), nm=document.getElementById('acNm'), em=document.getElementById('acEm'), rl=document.getElementById('acRl');
-    if(av){ av.textContent=ME.name[0]; av.style.background=ME.color; }
+    if(av){ av.textContent=ME.name[0]; av.style.background=ME.color; av.style.color=textOn(ME.color); }
     if(nm) nm.textContent=ME.name; if(em) em.textContent=USER_EMAIL; if(rl) rl.textContent=ME.is_admin?'Admin':'Founder';
     renderColors();
   }
@@ -1009,7 +1011,7 @@
     await loadAll();
     _ready=true;
     const av=document.getElementById('whoAv'), nm=document.getElementById('whoNm'), rl=document.getElementById('whoRl');
-    if(av){ av.textContent=me.name[0]; av.style.background=me.color; }
+    if(av){ av.textContent=me.name[0]; av.style.background=me.color; av.style.color=textOn(me.color); }
     if(nm) nm.textContent=me.name;
     if(rl) rl.textContent=me.is_admin?'Admin':'Founder';
     fillAccount();
@@ -1330,7 +1332,7 @@
         <button onclick="pickAct('${t.id}','edit')">✎ Edit</button>
         <button class="del" onclick="pickAct('${t.id}','delete')">✕ Delete</button>
       </div>` : '';
-    const moveMenu = moveMenuId===t.id ? `<div class="move-menu"><span class="mm-label">Move to</span>${FOUNDERS.filter(f=>f.k!==t.owner).map(f=>`<button class="mm-opt" onclick="doMove('${t.id}','${f.k}')"><span class="av" style="background:${f.c}">${f.n[0]}</span>${f.n}</button>`).join('')}<button class="mm-cancel" onclick="closeMove()">Cancel</button></div>` : '';
+    const moveMenu = moveMenuId===t.id ? `<div class="move-menu"><span class="mm-label">Move to</span>${FOUNDERS.filter(f=>f.k!==t.owner).map(f=>`<button class="mm-opt" onclick="doMove('${t.id}','${f.k}')"><span class="av" style="background:${f.c};color:${textOn(f.c)}">${f.n[0]}</span>${f.n}</button>`).join('')}<button class="mm-cancel" onclick="closeMove()">Cancel</button></div>` : '';
     return `<div class="task ${t.done?'done':''} ${t.flagged?'flagged':''}" draggable="true" data-id="${t.id}" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
       <div class="row1">
         <div class="cb" onclick="toggleDone('${t.id}')">${t.done?'✓':''}</div>
@@ -1408,7 +1410,7 @@
 
       return `<div class="col" data-owner="${f.k}" ondragover="colOver(event)" ondragleave="colLeave(event)" ondrop="colDrop(event,'${f.k}')">
         <div class="col-head">
-          <span class="av" style="background:${f.c}">${f.n[0]}</span>
+          <span class="av" style="background:${f.c};color:${textOn(f.c)}">${f.n[0]}</span>
           <div><div class="nm">${f.n}</div><div class="rl">${f.role}</div></div>
           <span class="cnt">${dc}/${total}</span>
         </div>
@@ -1463,7 +1465,7 @@
         action = a.restored ? `<span class="act-restored">✓ Undone</span>`
           : (exists ? `<button class="act-restore" onclick="undoMove('${a.id}')">↩ Undo move</button>` : `<span class="act-restored" style="color:var(--soft)">task removed</span>`);
       }
-      return `<div class="act"><span class="av" style="background:${c}">${who[0]}</span>
+      return `<div class="act"><span class="av" style="background:${c};color:${textOn(c)}">${who[0]}</span>
         <div class="txt"><b>${who}</b> <span class="vb">${VB[a.verb]||a.verb}</span> “${esc(a.text)}”${detail}${crossTag}
           <div class="tm">${fmtFull(a.ts)}</div>${action}</div></div>`;
     }).join('');
