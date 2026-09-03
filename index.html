@@ -844,6 +844,8 @@
   // offline safety net: keep working offline; flush the moment connection returns
   window.addEventListener('offline', ()=>{ setSaveStatus(); });
   window.addEventListener('online',  ()=>{ _failedAt=0; setSaveStatus(); if(_ready) saveB(); });
+  // date chips: a plain click doesn't open the calendar on desktop — showPicker() does (harmless where unsupported, e.g. iOS opens on tap anyway)
+  document.addEventListener('click', function(e){ const t=e.target; if(t && t.classList && t.classList.contains('due-ovl')){ try{ t.showPicker(); }catch(err){} } });
   function scheduleRetry(){ if(_retryT) return; _retryT=setTimeout(()=>{ _retryT=null; if(_ready) saveB(); }, 4000); }
   function saveFail(where, error){ const msg=(error&&error.message)||'check your connection'; console.warn('SAVE FAIL', where, error); _failedAt=Date.now(); setSaveStatus(); scheduleRetry(); showToast('⚠ Not saved — '+msg); }
   function _track(p, where){ _pending++; setSaveStatus();
