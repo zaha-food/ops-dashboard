@@ -211,6 +211,10 @@
   .col-head .rl{font-size:11px;color:var(--soft);}
   .col-head .cnt{margin-left:auto;font-size:11.5px;color:var(--soft);font-weight:600;}
   .col-prog{height:4px;border-radius:99px;background:var(--line2);margin:11px 0 12px;overflow:hidden;}
+  .col-sort{display:flex;align-items:center;gap:6px;margin:0 0 11px;}
+  .col-sort-lbl{font-size:9px;color:var(--soft);font-weight:600;text-transform:uppercase;letter-spacing:.08em;flex:0 0 auto;}
+  .col-sort select{flex:1;min-width:0;font:inherit;font-size:11px;font-weight:600;color:var(--ink);border:1px solid var(--line2);border-radius:7px;padding:3px 6px;background:#fff;cursor:pointer;}
+  .col-sort select:focus{outline:none;border-color:var(--accent);}
   .col-prog i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .3s var(--ease);}
   .addrow{display:flex;gap:6px;margin-bottom:12px;}
   .addrow input{flex:1;min-width:0;border:1px solid var(--line2);border-radius:9px;padding:9px 11px;font:inherit;font-size:13px;background:#fff;}
@@ -504,7 +508,7 @@
         <!-- CURRENTLY BUILDING -->
         <section class="view" data-view="building" hidden>
           <div class="build-bar">
-            <div class="bb-left"><label class="preview-wrap">Sort <select id="sortSel" class="preview-as" onchange="setSort(this.value)"><option value="manual">Manual</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="due">Due date</option></select></label></div>
+            <div class="bb-left"></div>
             <div class="build-actions">
               <span id="saveStatus" class="save-status"></span>
               <button id="expandToggle" class="mini-btn" onclick="toggleAllSubs()" style="display:none">Expand all</button>
@@ -756,17 +760,19 @@
   const doneOpen = new Set();
   const projOpen = new Set();
   const subsOpen = new Set();
-  let sortMode = (function(){ try{ return localStorage.getItem('zaha_sort')||'manual'; }catch(e){ return 'manual'; } })();
-  function sortTasks(arr){
+  // sort is per founder-column (each person sorts their own list)
+  let sortByCol = (function(){ try{ return JSON.parse(localStorage.getItem('zaha_sortcols'))||{}; }catch(e){ return {}; } })();
+  function sortModeFor(k){ return sortByCol[k]||'manual'; }
+  function setColSort(k,v){ sortByCol[k]=v; try{ localStorage.setItem('zaha_sortcols',JSON.stringify(sortByCol)); }catch(e){} renderBoard(); }
+  function sortTasks(arr, mode){
     const a=arr.slice();
-    if(sortMode==='newest') a.sort((x,y)=>y.createdAt-x.createdAt);
-    else if(sortMode==='oldest') a.sort((x,y)=>x.createdAt-y.createdAt);
-    else if(sortMode==='due') a.sort((x,y)=>{ const dx=x.due?new Date(x.due+'T00:00:00').getTime():Infinity, dy=y.due?new Date(y.due+'T00:00:00').getTime():Infinity; return dx-dy || (x.order??0)-(y.order??0); });
+    if(mode==='newest') a.sort((x,y)=>y.createdAt-x.createdAt);
+    else if(mode==='oldest') a.sort((x,y)=>x.createdAt-y.createdAt);
+    else if(mode==='due') a.sort((x,y)=>{ const dx=x.due?new Date(x.due+'T00:00:00').getTime():Infinity, dy=y.due?new Date(y.due+'T00:00:00').getTime():Infinity; return dx-dy || (x.order??0)-(y.order??0); });
     else a.sort((x,y)=>(x.order??0)-(y.order??0)); // manual
     return a;
   }
-  function setSort(v){ sortMode=v; try{ localStorage.setItem('zaha_sort',v); }catch(e){} const ss=document.getElementById('sortSel'); if(ss) ss.value=v; renderBoard(); }
-  function enableReorder(id){ setSort('manual'); }  /* switches to Manual so Up/Down appear (menu stays open) */
+  function enableReorder(id){ const t=B.tasks.find(x=>x.id===id); if(t) setColSort(t.owner,'manual'); }  /* switch that column to Manual so Up/Down appear */
 
   function loadB(){
     try{
@@ -1011,7 +1017,6 @@
     document.getElementById('login').style.display='none';
     document.getElementById('app').hidden=false;
     show('building');
-    const ss=document.getElementById('sortSel'); if(ss) ss.value=sortMode;
     renderBoard(); renderActivity();
     subscribeRealtime();
     setSaveStatus();
@@ -1309,7 +1314,7 @@
     const dueChip = t.due ? `<label class="due ${t.done?'muted':dueStatus(t)}">📅 ${dueLabel(t)}<input type="date" class="due-ovl" value="${t.due}" onchange="setDue('${t.id}',this.value)" aria-label="Change due date"></label><button class="due-clr" title="Clear date" onclick="clearDue('${t.id}')">×</button>` : '';
     let reorder='';
     if(menuId===t.id && !t.done){
-      if(sortMode==='manual'){ const s=siblings(t), i=s.findIndex(x=>x.id===t.id);
+      if(sortModeFor(t.owner)==='manual'){ const s=siblings(t), i=s.findIndex(x=>x.id===t.id);
         reorder=`<button onclick="moveUp('${t.id}')" ${i<=0?'disabled':''}>↑ Up</button><button onclick="moveDown('${t.id}')" ${i>=s.length-1?'disabled':''}>↓ Down</button>`;
       } else {
         reorder=`<button onclick="enableReorder('${t.id}')" title="Reordering needs Manual sort">↕ Reorder</button>`;
@@ -1343,7 +1348,7 @@
     const pt=B.tasks.filter(t=>t.projectId===p.id);
     const total=pt.length, dc=pt.filter(t=>t.done).length, pct=total?Math.round(dc/total*100):0;
     const open=projOpen.has(p.id);
-    const active=sortTasks(pt.filter(t=>!t.done)), done=pt.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+    const active=sortTasks(pt.filter(t=>!t.done), sortModeFor(p.owner)), done=pt.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
     const nameCell = projEditId===p.id
       ? `<input class="proj-rename" data-id="${p.id}" value="${esc(p.name)}" onclick="event.stopPropagation()"
            onkeydown="event.stopPropagation(); if(event.key==='Enter')commitRenameProject('${p.id}',this.value); else if(event.key==='Escape')cancelRenameProject()"
@@ -1385,7 +1390,9 @@
       const mine=B.tasks.filter(t=>t.owner===f.k);
       const total=mine.length, dc=mine.filter(t=>t.done).length, pct=total?Math.round(dc/total*100):0;
       const loose=mine.filter(t=>t.projectId==null);
-      const looseActive=sortTasks(loose.filter(t=>!t.done));
+      const sm=sortModeFor(f.k);
+      const sortCtrl = mine.length>1 ? `<div class="col-sort"><span class="col-sort-lbl">Sort</span><select onchange="setColSort('${f.k}',this.value)"><option value="manual" ${sm==='manual'?'selected':''}>Manual</option><option value="newest" ${sm==='newest'?'selected':''}>Newest</option><option value="oldest" ${sm==='oldest'?'selected':''}>Oldest</option><option value="due" ${sm==='due'?'selected':''}>Due date</option></select></div>` : '';
+      const looseActive=sortTasks(loose.filter(t=>!t.done), sm);
       const looseDone=loose.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
       const projects=B.projects.filter(p=>p.owner===f.k);
 
@@ -1406,6 +1413,7 @@
           <span class="cnt">${dc}/${total}</span>
         </div>
         <div class="col-prog"><i style="width:${pct}%"></i></div>
+        ${sortCtrl}
         <div class="addrow">
           <input id="add-${f.k}" placeholder="Quick task…" onkeydown="if(event.key==='Enter')addTask('${f.k}')">
           <button onclick="addTask('${f.k}')">+</button>
