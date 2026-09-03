@@ -250,7 +250,7 @@
   /* card controls row (steps + due) — sits below the task, above the meta */
   .cardctl{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px;padding-left:29px;}
   .stepc{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--soft);font-weight:600;}
-  .stepc.toggle{border:none;background:transparent;cursor:pointer;padding:2px 4px;border-radius:6px;font:inherit;font-weight:600;}
+  .stepc.toggle{border:none;background:transparent;cursor:pointer;padding:1px 3px;border-radius:5px;font:inherit;font-size:10px;font-weight:600;color:var(--soft);line-height:1.2;}
   .stepc.toggle:hover{background:var(--sand2);color:var(--ink);}
   .task-desc{font-size:12px;color:var(--soft);line-height:1.45;margin:5px 0 0;padding-left:29px;cursor:text;white-space:pre-wrap;word-break:break-word;}
   .task-desc:hover{color:var(--ink);}
@@ -497,6 +497,7 @@
             <div class="bb-left"><label class="preview-wrap">Sort <select id="sortSel" class="preview-as" onchange="setSort(this.value)"><option value="manual">Manual</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="due">Due date</option></select></label></div>
             <div class="build-actions">
               <span id="saveStatus" class="save-status"></span>
+              <button id="expandToggle" class="mini-btn" onclick="toggleAllSubs()" style="display:none">Expand all</button>
               <button class="mini-btn" onclick="openActivity()">🕑 Activity</button>
             </div>
           </div>
@@ -1125,6 +1126,12 @@
   /* ---- subtasks (steps) ---- */
   function openSub(id){ subsOpen.add(id); subAddId=id; renderBoard(); }
   function toggleSubs(id){ subsOpen.has(id)?subsOpen.delete(id):subsOpen.add(id); renderBoard(); }
+  function toggleAllSubs(){
+    const withSubs=B.tasks.filter(t=>(t.subs||[]).length);
+    const allOpen=withSubs.length && withSubs.every(t=>subsOpen.has(t.id));
+    if(allOpen) subsOpen.clear(); else withSubs.forEach(t=>subsOpen.add(t.id));
+    renderBoard();
+  }
   // task description (a note; not a completable subtask)
   function startDesc(id){ descEditId=id; renderBoard(); }
   function cancelDesc(){ skipDescBlur=true; descEditId=null; renderBoard(); }
@@ -1283,7 +1290,7 @@
     const subs=t.subs||[], subDone=subs.filter(s=>s.done).length;
     const showSubs = subsOpen.has(t.id) || subAddId===t.id;
     const subsHtml = (showSubs && (subs.length || subAddId===t.id)) ? `<div class="subs">${subs.map(s=>subRow(t,s)).join('')}${subAddId===t.id?subInput(t.id):''}</div>` : '';
-    const stepChip = subs.length ? `<button class="stepc toggle" onclick="toggleSubs('${t.id}')" title="Show/hide subtasks">◑ ${subDone}/${subs.length} ${showSubs?'▾':'▸'}</button>` : '';
+    const stepChip = subs.length ? `<button class="stepc toggle" onclick="toggleSubs('${t.id}')" title="Show/hide subtasks">${showSubs?'▾':'▸'} ${subDone}/${subs.length}</button>` : '';
     const descHtml = descEditId===t.id
       ? `<textarea class="desc-edit" data-id="${t.id}" rows="2" placeholder="Add a description…" onkeydown="if(event.key==='Escape')cancelDesc()" onblur="commitDesc('${t.id}',this.value)">${esc(t.desc||'')}</textarea>`
       : (t.desc ? `<div class="task-desc" onclick="startDesc('${t.id}')" title="Click to edit">${esc(t.desc)}</div>` : '');
@@ -1396,6 +1403,8 @@
         </div>
       </div>`;
     }).join('');
+    const et=document.getElementById('expandToggle');
+    if(et){ const withSubs=B.tasks.filter(t=>(t.subs||[]).length); if(!withSubs.length){ et.style.display='none'; } else { et.style.display=''; et.textContent=withSubs.every(t=>subsOpen.has(t.id))?'Collapse all':'Expand all'; } }
     if(editingId){ const inp=document.querySelector('.edit-in[data-id="'+editingId+'"]'); if(inp){ inp.focus(); inp.select(); } }
     if(subAddId){ const si=document.getElementById('subin-'+subAddId); if(si) si.focus(); }
     if(subEditId){ const se=document.querySelector('.sub-edit[data-sid="'+subEditId+'"]'); if(se){ se.focus(); se.select(); } }
