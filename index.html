@@ -1305,7 +1305,7 @@
   function toggleDoneCol(k){ doneOpen.has(k)?doneOpen.delete(k):doneOpen.add(k); renderBoard(); }
 
   /* ---- move / reassign (tap-friendly, works on touch + mouse) ---- */
-  function openMove(id){ moveMenuId = moveMenuId===id?null:id; renderBoard(); }
+  function openMove(id){ moveMenuId = moveMenuId===id?null:id; menuId=null; stMenuId=null; laneMenuId=null; renderBoard(); }
   function closeMove(){ moveMenuId=null; renderBoard(); }
   function doMove(id,owner){ moveMenuId=null; const t=B.tasks.find(x=>x.id===id); if(!t) return; if(isShared(t)){ assignTask(id, owner||null); } else { moveTask(id,owner); } }
 
@@ -1555,7 +1555,7 @@
     if(t.done && t.doneBy){ const by=F[t.doneBy]?F[t.doneBy].n:t.doneBy; return `✓ ${by} · ${fmtShort(t.doneAt)}`; }
     const ab=F[t.createdBy]?F[t.createdBy].n:t.createdBy; return `${ab} · ${fmtShort(t.createdAt)}`;
   }
-  function toggleMenu(id){ menuId = menuId===id?null:id; renderBoard(); }
+  function toggleMenu(id){ menuId = menuId===id?null:id; moveMenuId=null; stMenuId=null; laneMenuId=null; renderBoard(); }
   function pickAct(id,act){ menuId=null; if(act==='step')openSub(id); else if(act==='move')openMove(id); else if(act==='flag')toggleFlag(id); else if(act==='desc')startDesc(id); else if(act==='edit')startEdit(id); else if(act==='delete')deleteTask(id); }
   function toggleFlag(id){ const t=B.tasks.find(x=>x.id===id); if(!t) return; t.flagged=!t.flagged; logB(t.flagged?'flagged':'unflagged',t); saveB(); renderBoard(); renderActivity(); }
   function subInput(id){
