@@ -186,7 +186,7 @@
   .chip-av.on{border-color:var(--ink);background:var(--sand2);font-weight:600;}
   .build-bar .bb-left{flex:1;min-width:0;}
   @media(max-width:640px){ .topbar .tag{display:none;} .topbar{padding:14px 16px;} }
-  @media(max-width:560px){ .build-bar{gap:10px;} .build-bar .bb-left{flex:0 0 100%;} .build-actions{gap:8px;flex-wrap:wrap;} .mini-btn{padding:6px 10px;font-size:12px;} .save-status{font-size:10.5px;} }
+  @media(max-width:560px){ .build-bar{gap:10px;} .build-bar .bb-left{flex:0 0 100%;} .build-actions{gap:8px;flex-wrap:wrap;} .mini-btn{padding:6px 10px;font-size:12px;} .save-status,.live-status{font-size:10.5px;} }
   .build-actions{display:flex;align-items:center;gap:14px;}
   .preview-wrap{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--soft);}
   .preview-as{font:inherit;font-size:12px;font-weight:600;color:var(--ink);border:1px solid var(--line2);border-radius:8px;padding:6px 8px;background:#fff;cursor:pointer;}
@@ -303,6 +303,13 @@
   .due-clr{border:none;background:transparent;color:var(--stone);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex:0 0 auto;}
   .due-clr:hover{color:var(--danger);}
   .save-status{font-size:11.5px;font-weight:600;padding:2px 4px;white-space:nowrap;transition:color .2s;}
+  .live-status{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 6px;white-space:nowrap;cursor:pointer;color:var(--soft);border-radius:99px;}
+  .live-status:hover{background:var(--sand2);}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--soft);flex:0 0 auto;}
+  .live-status.on{color:var(--ok);} .live-status.on .live-dot{background:var(--ok);animation:livepulse 2.2s infinite;}
+  .live-status.wait{color:var(--warn);} .live-status.wait .live-dot{background:var(--warn);}
+  .live-status.off{color:var(--soft);} .live-status.off .live-dot{background:var(--soft);}
+  @keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(63,158,87,.5);}70%{box-shadow:0 0 0 5px rgba(63,158,87,0);}100%{box-shadow:0 0 0 0 rgba(63,158,87,0);}}
   .save-status.busy{color:var(--soft);} .save-status.ok{color:#2c7a44;} .save-status.fail{color:var(--danger);}
   .sub-dateedit{flex-basis:100%;display:flex;gap:6px;margin:2px 0 2px 23px;}
   .sub-dateedit input[type=date]{border:1px solid var(--accent);border-radius:6px;padding:4px 7px;font:inherit;font-size:11.5px;}
@@ -582,6 +589,7 @@
           <div class="build-bar">
             <div class="bb-left"></div>
             <div class="build-actions">
+              <span id="liveStatus" class="live-status" title="Live updates — tap to refresh now" onclick="resync()"></span>
               <span id="saveStatus" class="save-status"></span>
               <button id="expandToggle" class="mini-btn" onclick="toggleAllSubs()" style="display:none">Expand all</button>
               <button class="mini-btn" onclick="openActivity()">🕑 Activity</button>
@@ -917,12 +925,35 @@
   let _ready=false, _subbed=false, _hasDesc=false, _hasShared=false, _hasBoard=false;
   const _shadow = { projects:new Map(), tasks:new Map(), activity:new Map() };
   let _pending=0, _failedAt=0, _retryT=null;
+  let _live=false, _lastSync=0, _liveTick=null, _resyncing=false;
   function setSaveStatus(){
     const el=document.getElementById('saveStatus'); if(!el) return;
     if(navigator.onLine===false){ el.textContent='⚠ Offline — will sync when back'; el.className='save-status fail'; return; }
     if(_pending>0){ el.textContent='Saving…'; el.className='save-status busy'; }
     else if(_failedAt){ el.textContent='⚠ Not saved — retrying'; el.className='save-status fail'; }
     else { el.textContent='✓ Saved'; el.className='save-status ok'; }
+  }
+  // inbound freshness: are we seeing everyone's latest, and how long ago did we last sync?
+  function syncAgo(ts){ if(!ts) return ''; const s=Math.floor((Date.now()-ts)/1000);
+    if(s<10) return 'just now'; if(s<60) return s+'s ago';
+    const m=Math.floor(s/60); if(m<60) return m+'m ago';
+    const h=Math.floor(m/60); if(h<24) return h+'h ago';
+    return new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+  function setLiveStatus(){
+    const el=document.getElementById('liveStatus'); if(!el) return;
+    if(navigator.onLine===false){ el.className='live-status off'; el.innerHTML='<span class="live-dot"></span>Offline'; return; }
+    if(_resyncing){ el.className='live-status wait'; el.innerHTML='<span class="live-dot"></span>Syncing…'; return; }
+    if(_live){ el.className='live-status on'; el.innerHTML='<span class="live-dot"></span>Live · '+syncAgo(_lastSync); }
+    else { el.className='live-status wait'; el.innerHTML='<span class="live-dot"></span>Reconnecting…'; }
+  }
+  // pull the latest from the server so we're never staring at stale data (on tab-focus, reconnect, or tap)
+  async function resync(){
+    if(!_ready || _resyncing) return;
+    if(_pending>0 || _failedAt) return;   // don't clobber changes still on their way up
+    _resyncing=true; setLiveStatus();
+    try{ await loadAll(); _lastSync=Date.now(); renderBoard(); renderActivity(); }
+    catch(e){}
+    _resyncing=false; setLiveStatus();
   }
   // offline safety net: keep working offline; flush the moment connection returns
   window.addEventListener('offline', ()=>{ setSaveStatus(); });
@@ -932,8 +963,11 @@
   function scheduleRetry(){ if(_retryT) return; _retryT=setTimeout(()=>{ _retryT=null; if(_ready) saveB(); }, 4000); }
   function saveFail(where, error){ const msg=(error&&error.message)||'check your connection'; console.warn('SAVE FAIL', where, error); _failedAt=Date.now(); setSaveStatus(); scheduleRetry(); showToast('⚠ Not saved — '+msg); }
   function _track(p, where){ _pending++; setSaveStatus();
-    return p.then(res=>{ _pending--; if(res&&res.error){ saveFail(where,res.error); } else { if(_pending===0) _failedAt=0; setSaveStatus(); } })
+    return p.then(res=>{ _pending--; if(res&&res.error){ saveFail(where,res.error); } else { if(_pending===0){ _failedAt=0; _lastSync=Date.now(); setLiveStatus(); } setSaveStatus(); } })
             .catch(e=>{ _pending--; saveFail(where,e); }); }
+  // re-pull when we come back to the tab (catches anything missed while backgrounded/asleep)
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && _ready) resync(); });
+  window.addEventListener('online', ()=>{ if(_ready) resync(); });
   function _syncColl(name, table, arr, toRow, allowDelete){
     const cur=new Map(); const shadow=_shadow[name];
     arr.forEach(item=>{ const row=toRow(item); const sig=JSON.stringify(row); cur.set(item.id,sig);
@@ -968,9 +1002,15 @@
       .on('postgres_changes',{event:'*',schema:'public',table:'projects'}, p=>applyRT('projects',p))
       .on('postgres_changes',{event:'*',schema:'public',table:'activity'}, p=>applyRT('activity',p))
       .on('postgres_changes',{event:'*',schema:'public',table:'founders'}, p=>applyRT('founders',p))
-      .subscribe();
+      .subscribe((status)=>{
+        const wasLive=_live; _live=(status==='SUBSCRIBED');
+        if(_live){ if(!wasLive && _ready) resync(); else { _lastSync=Date.now(); } }  // rejoined after a drop -> catch up
+        setLiveStatus();
+      });
+    if(!_liveTick) _liveTick=setInterval(setLiveStatus, 15000);  // keep the "· 2m ago" fresh
   }
   function applyRT(name, payload){
+    _lastSync=Date.now(); setLiveStatus();   // we just heard from the server -> fresh
     const ev=payload.eventType, nw=payload.new, od=payload.old;
     if(name==='founders'){
       if(ev!=='DELETE' && nw){ const fo={k:nw.key,n:nw.name,role:nw.role,c:nw.color}; const i=FOUNDERS.findIndex(x=>x.k===nw.key); if(i>=0)FOUNDERS[i]=fo; else FOUNDERS.push(fo); F[fo.k]=fo; if(ME&&ME.key===nw.key){ ME.color=nw.color; const wa=document.getElementById('whoAv'); if(wa){ wa.style.background=nw.color; wa.style.color=textOn(nw.color); } } }
@@ -1127,8 +1167,9 @@
     document.getElementById('app').hidden=false;
     show('building');
     renderBoard(); renderActivity();
+    _lastSync=Date.now();
     subscribeRealtime();
-    setSaveStatus();
+    setSaveStatus(); setLiveStatus();
   }
   async function boot(){
     if(!window.supabase){ showLogin('Could not load (no connection). Refresh to try again.'); return; }
