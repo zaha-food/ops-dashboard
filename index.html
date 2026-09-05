@@ -1229,7 +1229,7 @@
   function toggleDone(id){
     const t=B.tasks.find(x=>x.id===id); if(!t) return;
     t.done=!t.done;
-    if(t.done){ t.doneAt=Date.now(); t.doneBy=B.me; logB('completed',t); }
+    if(t.done){ t.doneAt=Date.now(); t.doneBy=B.me; logB('completed',t); const _c=B.activity[0]; if(_c) _c.snapshot={taskId:t.id}; }  // remember which task, so it can be un-completed from Activity
     else { t.doneAt=null; t.doneBy=null; logB('reopened',t); }
     saveB(); renderBoard(); renderActivity();
   }
@@ -1260,6 +1260,7 @@
     saveB(); renderBoard(); renderActivity();
   }
   function restoreFromActivity(logId){ restoreSnapshot(B.activity.find(x=>x.id===logId)); }
+  function reopenFromActivity(logId){ const e=B.activity.find(x=>x.id===logId); if(!e||!e.snapshot||!e.snapshot.taskId) return; const t=B.tasks.find(x=>x.id===e.snapshot.taskId); if(t&&t.done){ toggleDone(t.id); showToast('Task reopened'); } }
   function undoMove(logId){
     const e=B.activity.find(x=>x.id===logId); if(!e||!e.snapshot||!e.snapshot.taskId) return;
     const t=B.tasks.find(x=>x.id===e.snapshot.taskId);
@@ -1802,6 +1803,11 @@
         const exists=B.tasks.some(x=>x.id===a.snapshot.taskId);
         action = a.restored ? `<span class="act-restored">✓ Undone</span>`
           : (exists ? `<button class="act-restore" onclick="undoMove('${a.id}')">↩ Undo move</button>` : `<span class="act-restored" style="color:var(--soft)">task removed</span>`);
+      } else if(a.verb==='completed' && a.snapshot && a.snapshot.taskId){
+        const t=B.tasks.find(x=>x.id===a.snapshot.taskId);
+        action = !t ? `<span class="act-restored" style="color:var(--soft)">task removed</span>`
+          : (t.done ? `<button class="act-restore" onclick="reopenFromActivity('${a.id}')">↩ Undo complete</button>`
+                    : `<span class="act-restored">✓ Reopened</span>`);
       } else if(a.verb==='sharedproj_delete' && a.snapshot && a.snapshot.project){
         const exists=B.projects.some(x=>x.id===a.snapshot.project.id);
         action = (a.restored||exists) ? `<span class="act-restored">✓ Restored</span>`
