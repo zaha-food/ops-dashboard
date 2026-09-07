@@ -441,6 +441,41 @@
     .kanban,.workstream{flex-direction:column;overflow-x:visible;}
     .kan-col,.ws-col{width:100%;min-width:0;}
   }
+  /* calculator usage analytics */
+  .usage-range{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;}
+  .usage-range button{border:none;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:var(--soft);padding:5px 10px;cursor:pointer;border-left:1px solid var(--line2);}
+  .usage-range button:first-child{border-left:none;}
+  .usage-range button.on{background:var(--clay);color:#fff;}
+  .usage-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:12px;margin-bottom:20px;}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);}
+  .stat .n{font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1;}
+  .stat .l{font-size:12px;color:var(--soft);margin-top:7px;font-weight:600;}
+  .stat .s{font-size:11px;color:var(--clay);margin-top:3px;font-weight:600;}
+  .usage-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;}
+  .usage-sec{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
+  .usage-sec.span2{grid-column:1 / -1;}
+  .usage-sec h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--clay);margin:0 0 14px;font-weight:600;}
+  .ubar{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:12.5px;}
+  .ubar-l{flex:0 0 84px;text-transform:capitalize;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ubar-t{flex:1;height:8px;background:var(--sand2);border-radius:99px;overflow:hidden;}
+  .ubar-t i{display:block;height:100%;background:var(--clay);border-radius:99px;}
+  .ubar-n{flex:0 0 auto;color:var(--soft);font-size:11.5px;white-space:nowrap;}
+  .urank{list-style:none;margin:0;padding:0;}
+  .urank li{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12.5px;}
+  .ur-n{flex:0 0 42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ur-bar{flex:1;height:7px;background:var(--sand2);border-radius:99px;overflow:hidden;}
+  .ur-bar i{display:block;height:100%;background:var(--warn);border-radius:99px;}
+  .ur-v{flex:0 0 auto;color:var(--soft);font-weight:600;}
+  .utrend{display:flex;align-items:flex-end;gap:4px;height:130px;}
+  .utc{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;}
+  .utc-bars{display:flex;align-items:flex-end;gap:2px;height:100%;width:100%;justify-content:center;}
+  .utc-bars i{width:9px;border-radius:3px 3px 0 0;min-height:2px;}
+  .utc-bars .us{background:var(--clay);} .utc-bars .ub{background:var(--ok);}
+  .utc-x{font-size:9px;color:var(--soft);}
+  .utrend-lg{display:flex;gap:16px;margin-top:10px;font-size:10.5px;color:var(--soft);}
+  .utrend-lg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
+  .utrend-lg .us{background:var(--clay);} .utrend-lg .ub{background:var(--ok);}
+  @media(max-width:560px){ .ur-n{flex-basis:52%;} .utc-bars i{width:5px;} }
 
   /* activity drawer */
   .drawer-scrim{position:fixed;inset:0;background:rgba(47,54,55,.28);opacity:0;pointer-events:none;transition:.2s;z-index:30;}
@@ -540,6 +575,7 @@
       <nav class="nav" id="nav">
         <a data-view="overview" data-admin="1"><span class="ic">▦</span><span class="lbl">Overview</span></a>
         <a class="active" data-view="building"><span class="ic">◆</span><span class="lbl">Currently Building</span></a>
+        <a data-view="usage"><span class="ic">📊</span><span class="lbl">Calculator Usage</span></a>
         <a data-view="staff" data-admin="1"><span class="ic">☺</span><span class="lbl">Staff &amp; Holiday</span></a>
         <a data-view="compliance" data-admin="1"><span class="ic">◈</span><span class="lbl">Compliance</span></a>
         <a data-view="documents" data-admin="1"><span class="ic">▤</span><span class="lbl">Documents</span></a>
@@ -597,6 +633,20 @@
           </div>
           <div id="sharedSection"></div>
           <div class="board" id="board"></div>
+        </section>
+
+        <!-- CALCULATOR USAGE -->
+        <section class="view" data-view="usage" hidden>
+          <div class="build-bar">
+            <div class="bb-left"></div>
+            <div class="build-actions">
+              <span id="usageRange" class="usage-range">
+                <button data-days="1">Today</button><button data-days="7" class="on">7 days</button><button data-days="30">30 days</button><button data-days="0">All time</button>
+              </span>
+              <button class="mini-btn" onclick="loadUsage(true)">↻ Refresh</button>
+            </div>
+          </div>
+          <div id="usageBody"><div class="col-empty">Loading usage…</div></div>
 
           <!-- activity drawer -->
           <div class="drawer-scrim" id="actScrim" onclick="closeActivity()"></div>
@@ -692,6 +742,7 @@
   const titles = {
     overview:['Overview','Your operations at a glance'],
     building:['Currently Building','What every founder is working on — live'],
+    usage:['Calculator Usage','How people are using the nutrition calculator'],
     staff:['Staff & Holiday','Track allowance, accrual and time taken'],
     compliance:['Compliance','Certificates & safety records — live expiry status'],
     documents:['Documents','Signed contracts, manuals & policies'],
@@ -703,7 +754,7 @@
     if(titles[view]){ document.getElementById('pageTitle').textContent=titles[view][0]; document.getElementById('pageSub').textContent=titles[view][1]; }
   }
   document.querySelectorAll('#nav a').forEach(a=>{ if(a.dataset.view) a.onclick=()=>navClick(a); });
-  function navClick(a){ if(a.classList.contains('locked')) return; show(a.dataset.view); document.body.classList.remove('nav-pinned'); }
+  function navClick(a){ if(a.classList.contains('locked')) return; show(a.dataset.view); if(a.dataset.view==='usage') loadUsage(); document.body.classList.remove('nav-pinned'); }
   function toggleNav(){ document.body.classList.toggle('nav-pinned'); }
   function applyAccess(){ document.querySelectorAll('#nav a[data-admin]').forEach(a=>a.classList.toggle('locked', !IS_ADMIN)); }
   /* real auth (enterApp / signOut) is defined in the Supabase section below */
@@ -1818,6 +1869,78 @@
           <div class="tm">${fmtFull(a.ts)}</div>${action}</div></div>`;
     }).join('');
   }
+
+  /* ---- calculator usage analytics ---- */
+  let _usageRows=[], _usageLoaded=false, _usageDays=7;
+  async function loadUsage(force){
+    const body=document.getElementById('usageBody'); if(!body) return;
+    if(_usageLoaded && !force){ renderUsage(); return; }
+    body.innerHTML='<div class="col-empty">Loading usage…</div>';
+    try{
+      const { data, error } = await sb.from('usage_events').select('*').order('ts',{ascending:false}).limit(8000);
+      if(error){ body.innerHTML='<div class="col-empty">Couldn’t load usage.<br><span style="color:var(--soft)">'+esc(error.message)+' — has the usage_events setup SQL been run?</span></div>'; return; }
+      _usageRows=data||[]; _usageLoaded=true; renderUsage();
+    }catch(e){ body.innerHTML='<div class="col-empty">Couldn’t load usage ('+esc(e.message||'error')+').</div>'; }
+  }
+  function _usageRange(){ if(!_usageDays) return _usageRows; const cut=Date.now()-_usageDays*86400000; return _usageRows.filter(r=>new Date(r.ts).getTime()>=cut); }
+  function fmtDur(s){ if(s<60) return s+'s'; const m=Math.floor(s/60); return m+'m'+(s%60?' '+(s%60)+'s':''); }
+  function countBy(arr,f){ const o={}; arr.forEach(x=>{ const k=f(x); o[k]=(o[k]||0)+1; }); return o; }
+  function splitBars(obj){ const es=Object.entries(obj).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]); const tot=es.reduce((s,e)=>s+e[1],0)||1;
+    if(!es.length) return '<div class="col-empty">No data yet.</div>';
+    return es.map(([k,v])=>`<div class="ubar"><div class="ubar-l">${esc(k)}</div><div class="ubar-t"><i style="width:${Math.round(v/tot*100)}%"></i></div><div class="ubar-n">${v} · ${Math.round(v/tot*100)}%</div></div>`).join(''); }
+  function rankList(entries){ if(!entries.length) return '<div class="col-empty">No data yet.</div>'; const max=entries[0][1]||1;
+    return '<ol class="urank">'+entries.map(([k,v])=>`<li><span class="ur-n" title="${esc(k)}">${esc(k)}</span><span class="ur-bar"><i style="width:${Math.round(v/max*100)}%"></i></span><span class="ur-v">${v}</span></li>`).join('')+'</ol>'; }
+  function dayBuckets(sessions, builds, days){
+    const today=new Date(); today.setHours(0,0,0,0); const cols=[];
+    for(let i=days-1;i>=0;i--){ const d=new Date(today.getTime()-i*86400000); cols.push({d, s:0, b:0}); }
+    const idx={}; cols.forEach((c,i)=>idx[c.d.toDateString()]=i);
+    sessions.forEach(r=>{ const d=new Date(r.ts); d.setHours(0,0,0,0); const i=idx[d.toDateString()]; if(i!=null) cols[i].s++; });
+    builds.forEach(r=>{ const d=new Date(r.ts); d.setHours(0,0,0,0); const i=idx[d.toDateString()]; if(i!=null) cols[i].b++; });
+    const max=Math.max(1,...cols.map(c=>c.s));
+    return '<div class="utrend">'+cols.map(c=>`<div class="utc" title="${c.d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}: ${c.s} visits · ${c.b} builds"><div class="utc-bars"><i class="us" style="height:${Math.round(c.s/max*100)}%"></i><i class="ub" style="height:${Math.round(c.b/max*100)}%"></i></div><div class="utc-x">${c.d.getDate()}</div></div>`).join('')
+      +'</div><div class="utrend-lg"><span><i class="us"></i>Visits</span><span><i class="ub"></i>Builds finished</span></div>';
+  }
+  function renderUsage(){
+    const body=document.getElementById('usageBody'); if(!body) return;
+    if(!_usageRows.length){ body.innerHTML='<div class="col-empty">No usage recorded yet.<br><span style="color:var(--soft)">Once the calculator has visitors (and the setup SQL is run) the stats will appear here.</span></div>'; return; }
+    const rows=_usageRange();
+    const sessions=rows.filter(r=>r.event==='session');
+    const builds=rows.filter(r=>r.event==='build_complete');
+    const ends=rows.filter(r=>r.event==='session_end');
+    const toggles=rows.filter(r=>r.event==='item_toggle');
+    const nSessions=sessions.length, nBuilds=builds.length;
+    const buildSessions=new Set(builds.map(b=>b.session_id)).size;
+    const convRate=nSessions?Math.round(buildSessions/nSessions*100):0;
+    const avg=(arr,f)=>arr.length?Math.round(arr.reduce((s,x)=>s+(f(x)||0),0)/arr.length):0;
+    const durs=ends.map(e=>e.meta&&e.meta.duration_ms).filter(x=>x>0);
+    const avgDur=durs.length?Math.round(durs.reduce((a,b)=>a+b,0)/durs.length/1000):0;
+    const stat=(n,l,sub)=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div>${sub?`<div class="s">${sub}</div>`:''}</div>`;
+    const stats=`<div class="usage-grid">
+      ${stat(nSessions,'Visits')}
+      ${stat(nBuilds,'Builds finished', buildSessions+' unique visitor'+(buildSessions===1?'':'s'))}
+      ${stat(convRate+'%','Completion rate')}
+      ${stat(avg(builds,b=>b.kcal)||'—','Avg kcal / build')}
+      ${stat(avg(builds,b=>b.item_count)||'—','Avg items / build')}
+      ${stat(avgDur?fmtDur(avgDur):'—','Avg time on page')}
+    </div>`;
+    const trend=dayBuckets(sessions, builds, Math.min(_usageDays||30,30));
+    const fmt=countBy(builds, b=>b.format||'—');
+    const dev=countBy(sessions, s=>s.device||'—');
+    const ret=sessions.filter(s=>s.meta&&s.meta.returning).length, neu=nSessions-ret;
+    const itemCounts={}; builds.forEach(b=>{ (Array.isArray(b.items)?b.items:[]).forEach(it=>{ const nm=it&&(it.name||it.label); if(nm) itemCounts[nm]=(itemCounts[nm]||0)+1; }); });
+    const topItems=Object.entries(itemCounts).sort((a,b)=>b[1]-a[1]).slice(0,12);
+    const clickCounts={}; toggles.forEach(r=>{ (Array.isArray(r.items)?r.items:[]).forEach(it=>{ if(it&&it.action==='add'&&it.name) clickCounts[it.name]=(clickCounts[it.name]||0)+1; }); });
+    const topClicks=Object.entries(clickCounts).sort((a,b)=>b[1]-a[1]).slice(0,12);
+    body.innerHTML = stats + `<div class="usage-cols">`
+      + `<div class="usage-sec span2"><h3>Visits &amp; builds per day</h3>${trend}</div>`
+      + `<div class="usage-sec"><h3>Format chosen</h3>${splitBars(fmt)}</div>`
+      + `<div class="usage-sec"><h3>Device</h3>${splitBars(dev)}</div>`
+      + `<div class="usage-sec"><h3>New vs returning visitors</h3>${splitBars({New:neu,Returning:ret})}</div>`
+      + `<div class="usage-sec"><h3>Most-built items</h3>${rankList(topItems)}</div>`
+      + `<div class="usage-sec"><h3>Most-tapped items</h3>${rankList(topClicks)}</div>`
+      + `</div>`;
+  }
+  document.querySelectorAll('#usageRange button').forEach(b=>{ b.onclick=()=>{ _usageDays=parseInt(b.dataset.days,10)||0; document.querySelectorAll('#usageRange button').forEach(x=>x.classList.toggle('on',x===b)); renderUsage(); }; });
 
   boot();
 </script>
