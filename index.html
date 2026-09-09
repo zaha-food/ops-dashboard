@@ -475,7 +475,18 @@
   .utrend-lg{display:flex;gap:16px;margin-top:10px;font-size:10.5px;color:var(--soft);}
   .utrend-lg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
   .utrend-lg .us{background:var(--clay);} .utrend-lg .ub{background:var(--ok);}
-  @media(max-width:560px){ .ur-n{flex-basis:52%;} .utc-bars i{width:5px;} }
+  .utrend-range{font-size:11.5px;color:var(--soft);margin-bottom:10px;font-weight:600;}
+  .utc-mo{display:block;color:var(--clay);font-weight:700;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;}
+  /* build history */
+  .bld-list{max-height:540px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+  .bld{border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+  .bld-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;margin-bottom:5px;}
+  .bld-fmt{background:var(--sand2);color:var(--accent-ink);text-transform:capitalize;font-weight:700;border-radius:99px;padding:1px 9px;font-size:11px;}
+  .bld-k{font-weight:700;}
+  .bld-m{color:var(--soft);}
+  .bld-t{margin-left:auto;color:var(--soft);font-size:11px;}
+  .bld-items{font-size:12.5px;color:var(--ink);line-height:1.5;}
+  @media(max-width:560px){ .ur-n{flex-basis:52%;} .utc-bars i{width:5px;} .bld-t{margin-left:0;flex-basis:100%;} }
 
   /* activity drawer */
   .drawer-scrim{position:fixed;inset:0;background:rgba(47,54,55,.28);opacity:0;pointer-events:none;transition:.2s;z-index:30;}
@@ -1897,8 +1908,26 @@
     sessions.forEach(r=>{ const d=new Date(r.ts); d.setHours(0,0,0,0); const i=idx[d.toDateString()]; if(i!=null) cols[i].s++; });
     builds.forEach(r=>{ const d=new Date(r.ts); d.setHours(0,0,0,0); const i=idx[d.toDateString()]; if(i!=null) cols[i].b++; });
     const max=Math.max(1,...cols.map(c=>c.s));
-    return '<div class="utrend">'+cols.map(c=>`<div class="utc" title="${c.d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}: ${c.s} visits · ${c.b} builds"><div class="utc-bars"><i class="us" style="height:${Math.round(c.s/max*100)}%"></i><i class="ub" style="height:${Math.round(c.b/max*100)}%"></i></div><div class="utc-x">${c.d.getDate()}</div></div>`).join('')
-      +'</div><div class="utrend-lg"><span><i class="us"></i>Visits</span><span><i class="ub"></i>Builds finished</span></div>';
+    const fmtD=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const last=cols[cols.length-1].d;
+    const range = cols.length>1 ? `${fmtD(cols[0].d)} – ${fmtD(last)} ${last.getFullYear()}` : `${last.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}`;
+    const bars = cols.map((c,i)=>{
+      const showMonth = i===0 || c.d.getMonth()!==cols[i-1].d.getMonth();
+      const mon = c.d.toLocaleDateString('en-GB',{month:'short'});
+      return `<div class="utc" title="${c.d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}: ${c.s} visits · ${c.b} builds"><div class="utc-bars"><i class="us" style="height:${Math.round(c.s/max*100)}%"></i><i class="ub" style="height:${Math.round(c.b/max*100)}%"></i></div><div class="utc-x">${showMonth?`<b class="utc-mo">${mon}</b>`:''}${c.d.getDate()}</div></div>`;
+    }).join('');
+    return `<div class="utrend-range">${range}</div><div class="utrend">${bars}</div><div class="utrend-lg"><span><i class="us"></i>Visits</span><span><i class="ub"></i>Builds finished</span></div>`;
+  }
+  function buildList(builds){
+    if(!builds.length) return '<div class="col-empty">No finished builds in this period yet.</div>';
+    const sorted=builds.slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,200);
+    return '<div class="bld-list">'+sorted.map(b=>{
+      const when=new Date(b.ts).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      const items=Array.isArray(b.items)?b.items:[];
+      const itemStr=items.map(it=>{ const nm=(it&&(it.name||it.label))||''; const q=(it&&it.qty>1)?it.qty+'× ':''; const h=(it&&it.half)?' ½':''; return esc(q+nm+h); }).join(' · ') || '—';
+      const dev=b.device==='mobile'?'📱':'💻';
+      return `<div class="bld"><div class="bld-h"><span class="bld-fmt">${esc(b.format||'—')}</span><span class="bld-k">${b.kcal||0} kcal</span><span class="bld-m">P${b.protein||0} · C${b.carbs||0} · F${b.fat||0} · Fi${b.fibre||0}</span><span class="bld-t">${dev} ${when}</span></div><div class="bld-items">${itemStr}</div></div>`;
+    }).join('')+'</div>';
   }
   function renderUsage(){
     const body=document.getElementById('usageBody'); if(!body) return;
@@ -1938,6 +1967,7 @@
       + `<div class="usage-sec"><h3>New vs returning visitors</h3>${splitBars({New:neu,Returning:ret})}</div>`
       + `<div class="usage-sec"><h3>Most-built items</h3>${rankList(topItems)}</div>`
       + `<div class="usage-sec"><h3>Most-tapped items</h3>${rankList(topClicks)}</div>`
+      + `<div class="usage-sec span2"><h3>Build history — exact orders (${nBuilds})</h3>${buildList(builds)}</div>`
       + `</div>`;
   }
   document.querySelectorAll('#usageRange button').forEach(b=>{ b.onclick=()=>{ _usageDays=parseInt(b.dataset.days,10)||0; document.querySelectorAll('#usageRange button').forEach(x=>x.classList.toggle('on',x===b)); renderUsage(); }; });
