@@ -912,7 +912,10 @@
   const sharedOpen = new Set();   // expanded shared projects
   const sharedMine = new Set();   // "Mine" filter per shared project
   let sharedAddOpen = false;      // creating a new shared project
-  let sharedView = 'kanban';      // view chosen in the create form
+  let sharedView = 'kanban';      // view chosen in the create form (the shared DEFAULT)
+  let myViews = {};               // per-person view override per shared project (local only, never synced)
+  try{ myViews = JSON.parse(localStorage.getItem('zaha_shared_views')) || {}; }catch(e){ myViews = {}; }
+  function viewFor(p){ if(!_hasBoard) return 'list'; return myViews[p.id] || p.view || 'list'; }
   const kanColClosed = new Set(); // collapsed kanban columns ("pid|status")
   let stMenuId = null, laneMenuId = null;   // status / column pick menus
   let colAddFor = null, colRenameId = null; // workstream column editing
@@ -1448,7 +1451,7 @@
     const nm=cid=>{ if(!cid) return 'General'; const c=p&&(p.columns||[]).find(x=>x.id===cid); return c?c.name:'General'; };
     t.colId=colId||null; logB('moved_col',t,nm(colId)); saveB(); renderBoard(); renderActivity();
   }
-  function setSharedView(pid,view){ const p=B.projects.find(x=>x.id===pid); if(!p||(p.view||'list')===view) return; p.view=view; logB('view_change',{text:p.name,owner:p.owner}, VLABEL[view].replace(/^\S+\s/,'')); saveB(); renderBoard(); renderActivity(); }
+  function setSharedView(pid,view){ myViews[pid]=view; try{ localStorage.setItem('zaha_shared_views',JSON.stringify(myViews)); }catch(e){} renderBoard(); }  // personal preference only — does NOT change anyone else's view
   function toggleKanCol(pid,k){ const key=pid+'|'+k; kanColClosed.has(key)?kanColClosed.delete(key):kanColClosed.add(key); renderBoard(); }
   function startAddColumn(pid){ colAddFor=pid; renderBoard(); }
   function cancelAddColumn(){ skipProjBlur=true; colAddFor=null; renderBoard(); }
@@ -1504,7 +1507,7 @@
     const pt=B.tasks.filter(t=>t.projectId===p.id);
     const total=pt.length, dc=pt.filter(t=>t.done).length, pct=total?Math.round(dc/total*100):0;
     const open=sharedOpen.has(p.id), mineOn=sharedMine.has(p.id);
-    const view=_hasBoard?(p.view||'list'):'list';
+    const view=viewFor(p);
     const nameCell = projEditId===p.id
       ? `<input class="proj-rename" data-id="${p.id}" value="${esc(p.name)}" onclick="event.stopPropagation()" onkeydown="event.stopPropagation(); if(event.key==='Enter')commitRenameProject('${p.id}',this.value); else if(event.key==='Escape')cancelRenameProject()" onblur="commitRenameProject('${p.id}',this.value)">`
       : `<span class="proj-name">${esc(p.name)}</span>`;
@@ -1691,7 +1694,7 @@
     const subs=t.subs||[], subDone=subs.filter(s=>s.done).length;
     const sharedTask = isShared(t);
     const sp = sharedTask ? B.projects.find(x=>x.id===t.projectId) : null;
-    const sview = _hasBoard && sp ? (sp.view||'list') : 'list';
+    const sview = sp ? viewFor(sp) : 'list';
     const statusPill = (sharedTask && sview==='kanban' && !t.done) ? `<button class="stpill st-${t.status||'todo'}" onclick="openStatus('${t.id}')">${STLABEL[t.status||'todo']}</button>` : '';
     const laneCol = (sharedTask && sview==='workstream') ? (sp.columns||[]).find(x=>x.id===t.colId) : null;
     const lanePill = (sharedTask && sview==='workstream') ? `<button class="lanepill" onclick="openLane('${t.id}')">▤ ${laneCol?esc(laneCol.name):'General'}</button>` : '';
