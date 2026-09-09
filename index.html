@@ -487,6 +487,32 @@
   .bld-t{margin-left:auto;color:var(--soft);font-size:11px;}
   .bld-items{font-size:12.5px;color:var(--ink);line-height:1.5;}
   @media(max-width:560px){ .ur-n{flex-basis:52%;} .utc-bars i{width:5px;} .bld-t{margin-left:0;flex-basis:100%;} }
+  /* recurring tasks */
+  .recurring{margin-top:14px;border-top:1px dashed var(--line2);padding-top:12px;}
+  .rec-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--clay);font-weight:600;margin-bottom:8px;}
+  .rec{background:#fff;border:1px solid var(--line2);border-radius:10px;padding:9px 11px;margin-bottom:8px;}
+  .rec.paused{opacity:.6;}
+  .rec-top{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;}
+  .rec-icon{font-size:12px;} .rec-txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rec-x{border:none;background:transparent;color:var(--soft);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:5px;}
+  .rec-x:hover{background:var(--danger-bg);color:var(--danger);}
+  .rec-cfg,.rec-add-cfg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:11.5px;color:var(--soft);margin-top:7px;}
+  .rec-cfg input[type=number],.rec-add-cfg input[type=number]{width:40px;font:inherit;font-size:11.5px;border:1px solid var(--line2);border-radius:6px;padding:2px 4px;text-align:center;}
+  .rec-cfg select,.rec-add-cfg select{font:inherit;font-size:11.5px;border:1px solid var(--line2);border-radius:6px;padding:2px 4px;background:#fff;}
+  .rec-date{font:inherit;font-size:11.5px;border:1px solid var(--line2);border-radius:6px;padding:2px 5px;background:#fff;color:var(--ink);}
+  .rec-fld,.rec-lead{display:inline-flex;align-items:center;gap:4px;}
+  .rec-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;}
+  .rec-when{font-size:11px;color:var(--accent-ink);font-weight:600;}
+  .rec-toggle{border:1px solid var(--line2);background:#fff;font:inherit;font-size:11px;font-weight:600;color:var(--soft);border-radius:6px;padding:3px 9px;cursor:pointer;}
+  .rec-toggle:hover{color:var(--ink);}
+  .rec-new{width:100%;border:1px dashed var(--line2);background:#fff;border-radius:10px;padding:9px;font:inherit;font-size:12.5px;font-weight:600;color:var(--soft);cursor:pointer;}
+  .rec-new:hover{color:var(--ink);border-style:solid;}
+  .rec-add{background:#fff;border:1px solid var(--clay);border-radius:10px;padding:10px;}
+  .rec-add>input{width:100%;font:inherit;font-size:13px;border:1px solid var(--line2);border-radius:8px;padding:7px 9px;margin-bottom:8px;}
+  .rec-add>input:focus{outline:none;border-color:var(--clay);}
+  .rec-add-acts{display:flex;gap:8px;margin-top:10px;}
+  .rec-go{border:none;background:var(--clay);color:#fff;border-radius:8px;padding:6px 13px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;}
+  .rec-cancel{border:1px solid var(--line2);background:#fff;color:var(--soft);border-radius:8px;padding:6px 11px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;}
 
   /* activity drawer */
   .drawer-scrim{position:fixed;inset:0;background:rgba(47,54,55,.28);opacity:0;pointer-events:none;transition:.2s;z-index:30;}
@@ -901,7 +927,7 @@
     // fallback for non-secure (HTTP) contexts where crypto.randomUUID is unavailable — still a valid UUID v4
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{ const r=Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); });
   };
-  let B = { projects:[], tasks:[], activity:[], me:'aonali' };
+  let B = { projects:[], tasks:[], activity:[], recurring:[], me:'aonali' };
   let editingId=null, dragId=null, undoTimer=null, skipBlur=false;
   let dueEditId=null, subAddId=null, skipSubBlur=false, moveMenuId=null, menuId=null;
   let subEditId=null, subDueId=null, skipSubEdit=false, descEditId=null, skipDescBlur=false;
@@ -912,6 +938,7 @@
   const sharedOpen = new Set();   // expanded shared projects
   const sharedMine = new Set();   // "Mine" filter per shared project
   let sharedAddOpen = false;      // creating a new shared project
+  let recAddFor = null;           // founder key whose "add recurring" form is open
   let sharedView = 'kanban';      // view chosen in the create form (the shared DEFAULT)
   let myViews = {};               // per-person view override per shared project (local only, never synced)
   try{ myViews = JSON.parse(localStorage.getItem('zaha_shared_views')) || {}; }catch(e){ myViews = {}; }
@@ -983,12 +1010,14 @@
   const rowToTask = r => ({ id:r.id, owner:r.owner, projectId:r.project_id||null, text:r.text, done:!!r.done, flagged:!!r.flagged, due:r.due||null, subs:Array.isArray(r.subs)?r.subs:[], order:r.sort_order??0, createdAt:r.created_at?new Date(r.created_at).getTime():Date.now(), createdBy:r.created_by||null, doneAt:r.done_at?new Date(r.done_at).getTime():null, doneBy:r.done_by||null, desc:r.description||null, status:r.status||'todo', colId:r.col_id||null });
   function projectToRow(p){ const r={ id:p.id, owner:p.owner, name:p.name }; if(_hasShared){ r.kind=p.kind||'individual'; r.due=p.due||null; } if(_hasBoard){ r.view=p.view||'list'; r.columns=Array.isArray(p.columns)?p.columns:[]; } return r; }
   const rowToProject = r => ({ id:r.id, owner:r.owner, name:r.name, kind:r.kind||'individual', due:r.due||null, view:r.view||'list', columns:Array.isArray(r.columns)?r.columns:[] });
+  function recurringToRow(x){ return { id:x.id, owner:x.owner, project_id:x.projectId||null, text:x.text, description:x.desc||null, freq:x.freq||'week', interval_n:x.interval||1, next_due:x.next||null, lead_days:x.lead||0, active:x.active!==false, created_by:x.createdBy||null }; }
+  const rowToRecurring = r => ({ id:r.id, owner:r.owner, projectId:r.project_id||null, text:r.text, desc:r.description||null, freq:r.freq||'week', interval:r.interval_n||1, next:r.next_due||null, lead:r.lead_days||0, active:r.active!==false, createdBy:r.created_by||null });
   function isShared(t){ if(!t.projectId) return false; const p=B.projects.find(x=>x.id===t.projectId); return !!(p && p.kind==='shared'); }
   const activityToRow = a => ({ id:a.id, ts:toISO(a.ts), actor:a.actor, verb:a.verb, text:a.text||null, owner:a.owner||null, detail:a.detail||null, snapshot:a.snapshot||null, restored:!!a.restored });
   const rowToActivity = r => ({ id:r.id, ts:r.ts?new Date(r.ts).getTime():Date.now(), actor:r.actor, verb:r.verb, text:r.text, owner:r.owner, detail:r.detail, snapshot:r.snapshot, restored:!!r.restored });
 
-  let _ready=false, _subbed=false, _hasDesc=false, _hasShared=false, _hasBoard=false;
-  const _shadow = { projects:new Map(), tasks:new Map(), activity:new Map() };
+  let _ready=false, _subbed=false, _hasDesc=false, _hasShared=false, _hasBoard=false, _hasRecurring=false;
+  const _shadow = { projects:new Map(), tasks:new Map(), activity:new Map(), recurring:new Map() };
   let _pending=0, _failedAt=0, _retryT=null;
   let _live=false, _lastSync=0, _liveTick=null, _resyncing=false;
   function setSaveStatus(){
@@ -1046,6 +1075,7 @@
     _syncColl('projects','projects',B.projects, projectToRow, true);
     _syncColl('tasks','tasks',B.tasks, taskToRow, true);
     _syncColl('activity','activity',B.activity, activityToRow, false);
+    if(_hasRecurring) _syncColl('recurring','recurring',B.recurring, recurringToRow, true);
   }
   async function loadAll(){
     const [pr,tk,ac] = await Promise.all([
@@ -1059,6 +1089,8 @@
     _shadow.projects=new Map(B.projects.map(p=>[p.id,JSON.stringify(projectToRow(p))]));
     _shadow.tasks=new Map(B.tasks.map(t=>[t.id,JSON.stringify(taskToRow(t))]));
     _shadow.activity=new Map(B.activity.map(a=>[a.id,JSON.stringify(activityToRow(a))]));
+    if(_hasRecurring){ const rc=await sb.from('recurring').select('*'); B.recurring=(rc.data||[]).map(rowToRecurring); _shadow.recurring=new Map(B.recurring.map(x=>[x.id,JSON.stringify(recurringToRow(x))])); }
+    else { B.recurring=[]; }
   }
   function subscribeRealtime(){
     if(_subbed) return; _subbed=true;
@@ -1067,6 +1099,7 @@
       .on('postgres_changes',{event:'*',schema:'public',table:'projects'}, p=>applyRT('projects',p))
       .on('postgres_changes',{event:'*',schema:'public',table:'activity'}, p=>applyRT('activity',p))
       .on('postgres_changes',{event:'*',schema:'public',table:'founders'}, p=>applyRT('founders',p))
+      .on('postgres_changes',{event:'*',schema:'public',table:'recurring'}, p=>applyRT('recurring',p))
       .subscribe((status)=>{
         const wasLive=_live; _live=(status==='SUBSCRIBED');
         if(_live){ if(!wasLive && _ready) resync(); else { _lastSync=Date.now(); } }  // rejoined after a drop -> catch up
@@ -1116,6 +1149,10 @@
     } else if(name==='projects'){
       if(ev==='DELETE'){ B.projects=B.projects.filter(p=>p.id!==od.id); _shadow.projects.delete(od.id); }
       else { const p=rowToProject(nw); const i=B.projects.findIndex(x=>x.id===p.id); if(i>=0)B.projects[i]=p; else B.projects.push(p); _shadow.projects.set(p.id,JSON.stringify(projectToRow(p))); }
+      renderBoardRT();
+    } else if(name==='recurring'){
+      if(ev==='DELETE'){ B.recurring=B.recurring.filter(x=>x.id!==od.id); _shadow.recurring.delete(od.id); }
+      else { const x=rowToRecurring(nw); const i=B.recurring.findIndex(y=>y.id===x.id); if(i>=0)B.recurring[i]=x; else B.recurring.push(x); _shadow.recurring.set(x.id,JSON.stringify(recurringToRow(x))); }
       renderBoardRT();
     } else {
       if(ev==='DELETE'){ B.activity=B.activity.filter(a=>a.id!==od.id); }
@@ -1234,6 +1271,8 @@
     try{ const pr=await sb.from('tasks').select('description').limit(1); _hasDesc=!pr.error; }catch(e){ _hasDesc=false; }
     try{ const pk=await sb.from('projects').select('kind').limit(1); _hasShared=!pk.error; }catch(e){ _hasShared=false; }
     try{ const bk=await sb.from('tasks').select('status').limit(1); _hasBoard=!bk.error; }catch(e){ _hasBoard=false; }
+    try{ const rk=await sb.from('recurring').select('id').limit(1); _hasRecurring=!rk.error; }catch(e){ _hasRecurring=false; }
+    if(_hasRecurring){ try{ await sb.rpc('spawn_recurring'); }catch(e){} }   // catch up any due occurrences the moment someone opens the app
     await loadAll();
     _ready=true;
     const av=document.getElementById('whoAv'), nm=document.getElementById('whoNm'), rl=document.getElementById('whoRl');
@@ -1841,6 +1880,7 @@
           ${projects.map(renderProject).join('')}
           ${newProjHtml}
         </div>
+        ${renderRecurringSection(f.k)}
       </div>`;
     }).join('');
     const et=document.getElementById('expandToggle');
@@ -1855,6 +1895,64 @@
     if(projEditId){ const pr=document.querySelector('.proj-rename[data-id="'+projEditId+'"]'); if(pr){ pr.focus(); pr.select(); } }
     if(colAddFor){ const ci=document.getElementById('wsnewcol-'+colAddFor); if(ci) ci.focus(); }
     if(colRenameId){ const cr=document.querySelector('.ws-rename'); if(cr){ cr.focus(); cr.select(); } }
+    if(recAddFor){ const rn=document.getElementById('recnew-'+recAddFor); if(rn) rn.focus(); }
+  }
+  /* ---- recurring tasks (personal) ---- */
+  const RECFREQ={day:'day',week:'week',month:'month'};
+  function recEvery(x){ const u=RECFREQ[x.freq]||'week'; return 'Every '+(x.interval>1?x.interval+' '+u+'s':u); }
+  function recNextLabel(x){ if(!x.next) return ''; const due=new Date(x.next+'T00:00:00'); const appear=new Date(due.getTime()-(x.lead||0)*86400000);
+    const f=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    return (x.lead>0) ? ('appears '+f(appear)+' · due '+f(due)) : ('next '+f(due)); }
+  function startRecAdd(k){ recAddFor=k; renderBoard(); }
+  function cancelRecAdd(){ recAddFor=null; renderBoard(); }
+  async function catchUpRecurring(){ if(!_hasRecurring) return; try{ await sb.rpc('spawn_recurring'); }catch(e){} }
+  async function addRecurring(k){
+    const txt=(document.getElementById('recnew-'+k)||{}).value||'';
+    const text=txt.trim(); if(!text) return;
+    const freq=(document.getElementById('recfreq-'+k)||{}).value||'week';
+    const interval=Math.max(1, parseInt((document.getElementById('recint-'+k)||{}).value,10)||1);
+    const lead=Math.max(0, parseInt((document.getElementById('reclead-'+k)||{}).value,10)||0);
+    let next=(document.getElementById('recdate-'+k)||{}).value||'';
+    if(!next){ next=new Date().toISOString().slice(0,10); }   // default: due today
+    const x={ id:uid(), owner:k, projectId:null, text, desc:null, freq, interval, next, lead, active:true, createdBy:B.me };
+    B.recurring.push(x); recAddFor=null;
+    logB('recurring_new',{text, owner:k}, recEvery(x).toLowerCase());
+    saveB(); renderBoard(); renderActivity();
+    // ensure the recipe is committed BEFORE asking the server to spawn, so a due occurrence appears at once
+    try{ const res=await sb.from('recurring').upsert(recurringToRow(x)); if(!res.error) _shadow.recurring.set(x.id, JSON.stringify(recurringToRow(x)));
+         await sb.rpc('spawn_recurring'); }catch(e){}
+  }
+  function setRecFreq(id,v){ const x=B.recurring.find(r=>r.id===id); if(x){ x.freq=v; saveB(); renderBoard(); } }
+  function setRecInterval(id,v){ const x=B.recurring.find(r=>r.id===id); if(x){ x.interval=Math.max(1,parseInt(v,10)||1); saveB(); renderBoard(); } }
+  function setRecLead(id,v){ const x=B.recurring.find(r=>r.id===id); if(x){ x.lead=Math.max(0,parseInt(v,10)||0); saveB(); renderBoard(); } }
+  function setRecNext(id,v){ const x=B.recurring.find(r=>r.id===id); if(x){ x.next=v||null; saveB(); renderBoard(); catchUpRecurring(); } }
+  function toggleRecActive(id){ const x=B.recurring.find(r=>r.id===id); if(!x) return; x.active=!x.active; logB(x.active?'recurring_resume':'recurring_pause',{text:x.text,owner:x.owner}); saveB(); renderBoard(); renderActivity(); if(x.active) catchUpRecurring(); }
+  function delRecurring(id){ const x=B.recurring.find(r=>r.id===id); if(!x) return; B.recurring=B.recurring.filter(r=>r.id!==id); logB('recurring_del',{text:x.text,owner:x.owner}); saveB(); renderBoard(); renderActivity(); }
+  function renderRecurringSection(k){
+    if(!_hasRecurring) return '';
+    const mine=(B.recurring||[]).filter(x=>x.owner===k).sort((a,b)=>(a.text||'').localeCompare(b.text||''));
+    const isMe=(k===B.me);
+    if(!mine.length && !isMe) return '';
+    const rows=mine.map(x=>`<div class="rec ${x.active?'':'paused'}">
+        <div class="rec-top"><span class="rec-icon">🔁</span><span class="rec-txt">${esc(x.text)}</span>
+          <button class="rec-x" title="Delete repeat" onclick="delRecurring('${x.id}')">✕</button></div>
+        <div class="rec-cfg">every <input type="number" min="1" value="${x.interval}" onchange="setRecInterval('${x.id}',this.value)">
+          <select onchange="setRecFreq('${x.id}',this.value)">${['day','week','month'].map(u=>`<option value="${u}" ${x.freq===u?'selected':''}>${u}</option>`).join('')}</select>
+          <span class="rec-fld">due <input type="date" class="rec-date" value="${x.next||''}" onchange="setRecNext('${x.id}',this.value)"></span>
+          <span class="rec-lead">appear<input type="number" min="0" value="${x.lead||0}" onchange="setRecLead('${x.id}',this.value)">d before</span></div>
+        <div class="rec-foot"><span class="rec-when">${esc(recNextLabel(x))}</span><button class="rec-toggle" onclick="toggleRecActive('${x.id}')">${x.active?'Pause':'Resume'}</button></div>
+      </div>`).join('');
+    const add = !isMe ? '' : (recAddFor===k
+      ? `<div class="rec-add">
+          <input id="recnew-${k}" placeholder="Recurring task…" onkeydown="if(event.key==='Enter')addRecurring('${k}'); else if(event.key==='Escape')cancelRecAdd()">
+          <div class="rec-add-cfg">every <input type="number" id="recint-${k}" min="1" value="1">
+            <select id="recfreq-${k}"><option value="day">day</option><option value="week" selected>week</option><option value="month">month</option></select>
+            <span class="rec-fld">due <input type="date" id="recdate-${k}" class="rec-date" value="${new Date().toISOString().slice(0,10)}"></span>
+            <span class="rec-lead">appear<input type="number" id="reclead-${k}" min="0" value="0">d before</span></div>
+          <div class="rec-add-acts"><button class="rec-go" onclick="addRecurring('${k}')">Add repeat</button><button class="rec-cancel" onclick="cancelRecAdd()">Cancel</button></div>
+        </div>`
+      : `<button class="rec-new" onclick="startRecAdd('${k}')">🔁 Add recurring task</button>`);
+    return `<div class="recurring"><div class="rec-label">Recurring</div>${rows}${add}</div>`;
   }
   function renderActivity(){
     const body=document.getElementById('actBody'); if(!body) return;
@@ -1865,7 +1963,8 @@
       proj_add:'created the project',proj_rename:'renamed the project to',proj_delete:'deleted the project',
       flagged:'flagged as blocked',unflagged:'cleared the flag on',
       assigned:'assigned',proj_due:'set the due date on',sharedproj_delete:'deleted the shared project',
-      status:'set the status of',moved_col:'moved to a column',view_change:'switched the view of',proj_col:'updated columns of'};
+      status:'set the status of',moved_col:'moved to a column',view_change:'switched the view of',proj_col:'updated columns of',
+      recurring_new:'set up a recurring task',recurring_del:'removed the recurring task',recurring_pause:'paused the recurring task',recurring_resume:'resumed the recurring task',recurring_add:'🔁 added the recurring task'};
     body.innerHTML = B.activity.map(a=>{
       const who=F[a.actor]?F[a.actor].n:a.actor, c=F[a.actor]?F[a.actor].c:'#999';
       let detail='';
