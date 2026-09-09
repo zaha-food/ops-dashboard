@@ -633,6 +633,15 @@
           </div>
           <div id="sharedSection"></div>
           <div class="board" id="board"></div>
+
+          <!-- activity drawer -->
+          <div class="drawer-scrim" id="actScrim" onclick="closeActivity()"></div>
+          <aside class="drawer" id="actDrawer">
+            <div class="dh"><h3>Activity history</h3><button class="x" onclick="closeActivity()">×</button></div>
+            <div class="dbody" id="actBody"></div>
+          </aside>
+          <!-- undo toast -->
+          <div class="toast" id="toast"></div>
         </section>
 
         <!-- CALCULATOR USAGE -->
@@ -647,15 +656,6 @@
             </div>
           </div>
           <div id="usageBody"><div class="col-empty">Loading usage…</div></div>
-
-          <!-- activity drawer -->
-          <div class="drawer-scrim" id="actScrim" onclick="closeActivity()"></div>
-          <aside class="drawer" id="actDrawer">
-            <div class="dh"><h3>Activity history</h3><button class="x" onclick="closeActivity()">×</button></div>
-            <div class="dbody" id="actBody"></div>
-          </aside>
-          <!-- undo toast -->
-          <div class="toast" id="toast"></div>
         </section>
 
         <!-- STAFF & HOLIDAY -->
