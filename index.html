@@ -1943,6 +1943,9 @@
     const avg=(arr,f)=>arr.length?Math.round(arr.reduce((s,x)=>s+(f(x)||0),0)/arr.length):0;
     const durs=ends.map(e=>e.meta&&e.meta.duration_ms).filter(x=>x>0);
     const avgDur=durs.length?Math.round(durs.reduce((a,b)=>a+b,0)/durs.length/1000):0;
+    // time taken to actually finish a build — first completion per session (excludes bouncers)
+    const firstBuildMs={}; builds.forEach(b=>{ const t=b.meta&&b.meta.time_to_build_ms; if(t>0 && (firstBuildMs[b.session_id]==null || t<firstBuildMs[b.session_id])) firstBuildMs[b.session_id]=t; });
+    const bt=Object.values(firstBuildMs); const avgBuild=bt.length?Math.round(bt.reduce((a,b)=>a+b,0)/bt.length/1000):0;
     const stat=(n,l,sub)=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div>${sub?`<div class="s">${sub}</div>`:''}</div>`;
     const stats=`<div class="usage-grid">
       ${stat(nSessions,'Visits')}
@@ -1950,7 +1953,8 @@
       ${stat(convRate+'%','Completion rate')}
       ${stat(avg(builds,b=>b.kcal)||'—','Avg kcal / build')}
       ${stat(avg(builds,b=>b.item_count)||'—','Avg items / build')}
-      ${stat(avgDur?fmtDur(avgDur):'—','Avg time on page')}
+      ${stat(avgBuild?fmtDur(avgBuild):'—','Avg time to build','finishers only')}
+      ${stat(avgDur?fmtDur(avgDur):'—','Avg time on page','all visitors')}
     </div>`;
     const trend=dayBuckets(sessions, builds, Math.min(_usageDays||30,30));
     const fmt=countBy(builds, b=>b.format||'—');
