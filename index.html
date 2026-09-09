@@ -1016,7 +1016,7 @@
     if(!_ready || _resyncing) return;
     if(_pending>0 || _failedAt) return;   // don't clobber changes still on their way up
     _resyncing=true; setLiveStatus();
-    try{ await loadAll(); _lastSync=Date.now(); renderBoard(); renderActivity(); }
+    try{ await loadAll(); _lastSync=Date.now(); renderBoardRT(); renderActivity(); }
     catch(e){}
     _resyncing=false; setLiveStatus();
   }
@@ -1074,12 +1074,26 @@
       });
     if(!_liveTick) _liveTick=setInterval(setLiveStatus, 15000);  // keep the "· 2m ago" fresh
   }
+  // Someone else's live change must NOT wipe a box you're typing in. Defer the
+  // re-render while a text field is focused; flush it the moment you click away.
+  let _rtRenderQueued=false;
+  function boardBusy(){
+    const a=document.activeElement; if(!a) return false;
+    if(a.tagName==='TEXTAREA') return true;
+    if(a.tagName==='INPUT'){ const t=(a.getAttribute('type')||'text').toLowerCase(); return t==='text'||t==='search'||t===''; }
+    return false;
+  }
+  function renderBoardRT(){ if(boardBusy()){ _rtRenderQueued=true; return; } renderBoard(); }
+  document.addEventListener('focusout', function(e){
+    const t=e.target; if(!t || (t.tagName!=='INPUT' && t.tagName!=='TEXTAREA')) return;
+    if(_rtRenderQueued){ setTimeout(function(){ if(_rtRenderQueued && !boardBusy()){ _rtRenderQueued=false; renderBoard(); } }, 0); }
+  });
   function applyRT(name, payload){
     _lastSync=Date.now(); setLiveStatus();   // we just heard from the server -> fresh
     const ev=payload.eventType, nw=payload.new, od=payload.old;
     if(name==='founders'){
       if(ev!=='DELETE' && nw){ const fo={k:nw.key,n:nw.name,role:nw.role,c:nw.color}; const i=FOUNDERS.findIndex(x=>x.k===nw.key); if(i>=0)FOUNDERS[i]=fo; else FOUNDERS.push(fo); F[fo.k]=fo; if(ME&&ME.key===nw.key){ ME.color=nw.color; const wa=document.getElementById('whoAv'); if(wa){ wa.style.background=nw.color; wa.style.color=textOn(nw.color); } } }
-      renderBoard(); renderActivity(); if(ME) fillAccount();
+      renderBoardRT(); renderActivity(); if(ME) fillAccount();
       return;
     }
     if(name==='tasks'){
@@ -1098,11 +1112,11 @@
           if(extras.length) saveB();                                       // persist the merged union so no one's step is lost
         }
       }
-      renderBoard();
+      renderBoardRT();
     } else if(name==='projects'){
       if(ev==='DELETE'){ B.projects=B.projects.filter(p=>p.id!==od.id); _shadow.projects.delete(od.id); }
       else { const p=rowToProject(nw); const i=B.projects.findIndex(x=>x.id===p.id); if(i>=0)B.projects[i]=p; else B.projects.push(p); _shadow.projects.set(p.id,JSON.stringify(projectToRow(p))); }
-      renderBoard();
+      renderBoardRT();
     } else {
       if(ev==='DELETE'){ B.activity=B.activity.filter(a=>a.id!==od.id); }
       else { const a=rowToActivity(nw); const i=B.activity.findIndex(x=>x.id===a.id); if(i>=0)B.activity[i]=a; else B.activity.unshift(a); B.activity.sort((x,y)=>y.ts-x.ts); if(B.activity.length>500)B.activity.length=500; _shadow.activity.set(a.id,JSON.stringify(activityToRow(a))); }
