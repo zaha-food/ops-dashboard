@@ -1138,13 +1138,22 @@
         if(i<0){ B.tasks.push(incoming); _shadow.tasks.set(incoming.id, JSON.stringify(taskToRow(incoming))); }
         else {
           const local=B.tasks[i];
-          _shadow.tasks.set(incoming.id, JSON.stringify(taskToRow(incoming))); // server truth
-          const incIds=new Set((incoming.subs||[]).map(s=>s.id));
-          const extras=(local.subs||[]).filter(s=>!incIds.has(s.id));      // steps added here but not yet on the server
+          // 3-way subtask merge (base = last-confirmed server state) so local ADDS survive AND local DELETES don't come back
+          const serverSubs=(incoming.subs||[]).slice();
+          let baseSubs=[]; const br=_shadow.tasks.get(incoming.id);
+          if(br){ try{ baseSubs=JSON.parse(br).subs||[]; }catch(e){} }
+          const baseIds=new Set(baseSubs.map(s=>s.id));
+          const localIds=new Set((local.subs||[]).map(s=>s.id));
+          const incIds=new Set(serverSubs.map(s=>s.id));
+          let merged=serverSubs.slice();
+          (local.subs||[]).forEach(s=>{ if(!baseIds.has(s.id)&&!incIds.has(s.id)) merged.push(s); }); // keep steps added here, not yet on server
+          merged=merged.filter(s=> localIds.has(s.id) || !baseIds.has(s.id));                          // drop steps deleted here (were confirmed, now gone)
           if(editingId===incoming.id) incoming.text=local.text;            // don't wipe text being typed
-          if(extras.length) incoming.subs=(incoming.subs||[]).concat(extras);
+          const serverRow=taskToRow(incoming);                             // shadow = SERVER truth (subs as the server has them)
+          _shadow.tasks.set(incoming.id, JSON.stringify(serverRow));
+          incoming.subs=merged;
           B.tasks[i]=incoming;
-          if(extras.length) saveB();                                       // persist the merged union so no one's step is lost
+          if(JSON.stringify(merged)!==JSON.stringify(serverSubs)) saveB(); // persist our local add/delete so the server matches
         }
       }
       renderBoardRT();
