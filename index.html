@@ -1986,7 +1986,8 @@
       if(a.verb==='moved'&&a.detail){ const p=a.detail.split('→'); detail=` <span class="vb">(${F[p[0]]?F[p[0]].n:p[0]} → ${F[p[1]]?F[p[1]].n:p[1]})</span>`; }
       else if(a.verb==='assigned'&&a.detail){ const p=a.detail.split('→'); detail=` <span class="vb">(${esc(p[0])} → ${esc(p[1])})</span>`; }
       else if(a.detail){ detail=` <span class="vb">— ${esc(a.detail)}</span>`; }
-      const crossTag=(a.owner&&a.actor!==a.owner&&(a.verb==='completed'||a.verb==='reopened'))?` <span class="vb">(${F[a.owner]?F[a.owner].n:a.owner}’s task)</span>`:'';
+      const crossVerbs=(a.verb==='completed'||a.verb==='reopened'||a.verb==='deleted'||a.verb==='edited'||a.verb==='described'||a.verb==='flagged'||a.verb==='unflagged'||a.verb.indexOf('substep')===0||a.verb.indexOf('due')===0);
+      const crossTag=(a.owner&&a.actor!==a.owner&&crossVerbs)?` <span class="vb">(${F[a.owner]?F[a.owner].n:a.owner}’s task)</span>`:'';
       let action='';
       if(a.verb==='deleted' && a.snapshot){
         const exists=B.tasks.some(x=>x.id===a.snapshot.id);
