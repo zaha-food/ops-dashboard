@@ -285,6 +285,8 @@
   .sub .scb:hover{border-color:var(--ok);}
   .sub.done .scb{background:var(--ok);border-color:var(--ok);}
   .sub .stx{flex:1;min-width:60px;color:var(--ink);line-height:1.35;word-break:break-word;cursor:text;}
+  .sub-by{flex:0 0 auto;display:inline-flex;align-items:center;}
+  .sub-by .av{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;}
   .sub .stx:hover{text-decoration:underline dotted;text-underline-offset:2px;}
   .sub-edit{flex:1;min-width:80px;border:1px solid var(--accent);border-radius:6px;padding:4px 7px;font:inherit;font-size:12.5px;}
   .sub-edit:focus{outline:none;}
@@ -1432,7 +1434,7 @@
     renderBoard(); renderActivity();
   }
   function closeSub(){ skipSubBlur=true; subAddId=null; renderBoard(); }
-  function pushSub(id,text){ const t=B.tasks.find(x=>x.id===id); if(!t)return; t.subs=t.subs||[]; t.subs.push({id:uid(),text,done:false}); logB('substep_add',t,'“'+text+'”'); saveB(); }
+  function pushSub(id,text){ const t=B.tasks.find(x=>x.id===id); if(!t)return; t.subs=t.subs||[]; t.subs.push({id:uid(),text,done:false,by:B.me}); logB('substep_add',t,'“'+text+'”'); saveB(); }
   function addSub(id,val){ const text=(val||'').trim(); if(!text)return; pushSub(id,text); skipSubBlur=true; subAddId=id; renderBoard(); const si=document.getElementById('subin-'+id); if(si){ si.value=''; si.focus(); } renderActivity(); }
   function subBlur(id,val){ if(skipSubBlur){ skipSubBlur=false; return; } const text=(val||'').trim(); if(text)pushSub(id,text); subAddId=null; renderBoard(); renderActivity(); }
   function toggleSub(taskId,subId){ const t=B.tasks.find(x=>x.id===taskId); if(!t)return; const s=(t.subs||[]).find(x=>x.id===subId); if(!s)return; s.done=!s.done; logB(s.done?'substep_done':'substep_reopen',t,'“'+s.text+'”'); saveB(); renderBoard(); renderActivity(); }
@@ -1734,6 +1736,7 @@
     return `<div class="sub ${s.done?'done':''}">
       <span class="scb" onclick="toggleSub('${t.id}','${s.id}')">${s.done?'✓':''}</span>
       <span class="stx" onclick="startSubEdit('${t.id}','${s.id}')" title="Click to edit">${esc(s.text)}</span>
+      ${s.by&&F[s.by]?`<span class="sub-by" title="Subtask added by ${esc(F[s.by].n)}"><span class="av" style="background:${F[s.by].c};color:${textOn(F[s.by].c)}">${F[s.by].n[0]}</span></span>`:''}
       ${dChip}
       <span class="sub-acts"><label class="sub-cal" title="Subtask due date">📅<input type="date" class="due-ovl" value="${s.due||''}" onchange="setSubDue('${t.id}','${s.id}',this.value)"></label><button class="sdel" title="Remove subtask" onclick="delSub('${t.id}','${s.id}')">×</button></span>
     </div>`;
