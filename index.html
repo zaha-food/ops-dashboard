@@ -489,16 +489,29 @@
   .bld-t{margin-left:auto;color:var(--soft);font-size:11px;}
   .bld-items{font-size:12.5px;color:var(--ink);line-height:1.5;}
   @media(max-width:560px){ .ur-n{flex-basis:52%;} .utc-bars i{width:5px;} .bld-t{margin-left:0;flex-basis:100%;} }
-  /* recurring tasks */
-  .recurring{margin-top:14px;border-top:1px dashed var(--line2);padding-top:12px;}
-  .rec-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--clay);font-weight:600;margin-bottom:8px;}
-  .rec{background:#fff;border:1px solid var(--line2);border-radius:10px;padding:9px 11px;margin-bottom:8px;}
-  .rec.paused{opacity:.6;}
-  .rec-top{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;}
-  .rec-icon{font-size:12px;} .rec-txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .rec-x{border:none;background:transparent;color:var(--soft);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:5px;}
-  .rec-x:hover{background:var(--danger-bg);color:var(--danger);}
-  .rec-cfg,.rec-add-cfg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:11.5px;color:var(--soft);margin-top:7px;}
+  /* recurring tasks — compact & collapsible */
+  .recurring{margin-top:14px;border-top:1px dashed var(--line2);padding-top:10px;}
+  .rec-head-row{display:flex;align-items:center;gap:8px;}
+  .rec-head{flex:1;display:inline-flex;align-items:center;gap:7px;border:none;background:transparent;cursor:pointer;
+    font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--clay);font-weight:700;padding:2px 0;}
+  .rec-hicon{font-size:12px;}
+  .rec-count{background:var(--sand2);color:var(--soft);border-radius:99px;font-size:10px;font-weight:700;padding:0 6px;letter-spacing:0;}
+  .rec-head .rec-cav{color:var(--line2);font-size:9px;}
+  .rec-add-btn{border:1px solid var(--line2);background:#fff;color:var(--soft);cursor:pointer;width:22px;height:22px;border-radius:7px;font-size:14px;line-height:1;display:grid;place-items:center;flex:0 0 auto;}
+  .rec-add-btn:hover{color:var(--clay);border-color:var(--clay);}
+  .rec-body{margin-top:8px;}
+  .rec{background:#fff;border:1px solid var(--line2);border-radius:9px;margin-bottom:6px;overflow:hidden;}
+  .rec.paused{opacity:.62;}
+  .rec-line{display:flex;align-items:center;gap:7px;padding:8px 10px;cursor:pointer;font-size:12.5px;}
+  .rec-line .rec-cav{color:var(--line2);font-size:9px;flex:0 0 auto;}
+  .rec-txt{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto;min-width:0;}
+  .rec-paused{flex:0 0 auto;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--warn);background:var(--warn-bg);border-radius:99px;padding:1px 6px;}
+  .rec-meta{margin-left:auto;flex:0 0 auto;font-size:11px;color:var(--soft);white-space:nowrap;}
+  .rec-edit{padding:0 10px 10px;border-top:1px solid var(--line);}
+  .rec-del{border:1px solid var(--line2);background:#fff;font:inherit;font-size:11px;font-weight:600;color:var(--soft);border-radius:6px;padding:3px 9px;cursor:pointer;}
+  .rec-del:hover{color:var(--danger);border-color:var(--danger);}
+  .rec-actions{display:inline-flex;gap:6px;}
+  .rec-cfg,.rec-add-cfg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:11.5px;color:var(--soft);margin-top:10px;}
   .rec-cfg input[type=number],.rec-add-cfg input[type=number]{width:40px;font:inherit;font-size:11.5px;border:1px solid var(--line2);border-radius:6px;padding:2px 4px;text-align:center;}
   .rec-cfg select,.rec-add-cfg select{font:inherit;font-size:11.5px;border:1px solid var(--line2);border-radius:6px;padding:2px 4px;background:#fff;}
   .rec-date{font:inherit;font-size:11.5px;border:1px solid var(--line2);border-radius:6px;padding:2px 5px;background:#fff;color:var(--ink);}
@@ -943,6 +956,8 @@
   const sharedMine = new Set();   // "Mine" filter per shared project
   let sharedAddOpen = false;      // creating a new shared project
   let recAddFor = null;           // founder key whose "add recurring" form is open
+  const recSecOpen = new Set();   // founder keys whose Recurring section is expanded
+  const recOpen = new Set();      // recurring recipe ids expanded for editing
   let sharedView = 'kanban';      // view chosen in the create form (the shared DEFAULT)
   let myViews = {};               // per-person view override per shared project (local only, never synced)
   try{ myViews = JSON.parse(localStorage.getItem('zaha_shared_views')) || {}; }catch(e){ myViews = {}; }
@@ -1919,7 +1934,11 @@
   function recNextLabel(x){ if(!x.next) return ''; const due=new Date(x.next+'T00:00:00'); const appear=new Date(due.getTime()-(x.lead||0)*86400000);
     const f=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
     return (x.lead>0) ? ('appears '+f(appear)+' · due '+f(due)) : ('next '+f(due)); }
-  function startRecAdd(k){ recAddFor=k; renderBoard(); }
+  function recShort(x){ const u={day:'day',week:'wk',month:'mo'}[x.freq]||'wk'; let s=x.interval>1?('every '+x.interval+' '+u):('every '+u);
+    if(x.next){ const d=new Date(x.next+'T00:00:00'); s+=' · '+d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); if(x.lead>0) s+=' (−'+x.lead+'d)'; } return s; }
+  function toggleRecSec(k){ recSecOpen.has(k)?recSecOpen.delete(k):recSecOpen.add(k); renderBoard(); }
+  function toggleRecOpen(id){ recOpen.has(id)?recOpen.delete(id):recOpen.add(id); renderBoard(); }
+  function startRecAdd(k){ recAddFor=k; recSecOpen.add(k); renderBoard(); }
   function cancelRecAdd(){ recAddFor=null; renderBoard(); }
   async function catchUpRecurring(){ if(!_hasRecurring) return; try{ await sb.rpc('spawn_recurring'); }catch(e){} }
   async function addRecurring(k){
@@ -1949,16 +1968,25 @@
     const mine=(B.recurring||[]).filter(x=>x.owner===k).sort((a,b)=>(a.text||'').localeCompare(b.text||''));
     const isMe=(k===B.me);
     if(!mine.length && !isMe) return '';
-    const rows=mine.map(x=>`<div class="rec ${x.active?'':'paused'}">
-        <div class="rec-top"><span class="rec-icon">🔁</span><span class="rec-txt">${esc(x.text)}</span>
-          <button class="rec-x" title="Delete repeat" onclick="delRecurring('${x.id}')">✕</button></div>
-        <div class="rec-cfg">every <input type="number" min="1" value="${x.interval}" onchange="setRecInterval('${x.id}',this.value)">
-          <select onchange="setRecFreq('${x.id}',this.value)">${['day','week','month'].map(u=>`<option value="${u}" ${x.freq===u?'selected':''}>${u}</option>`).join('')}</select>
-          <span class="rec-fld">due <input type="date" class="rec-date" value="${x.next||''}" onchange="setRecNext('${x.id}',this.value)"></span>
-          <span class="rec-lead">appear<input type="number" min="0" value="${x.lead||0}" onchange="setRecLead('${x.id}',this.value)">d before</span></div>
-        <div class="rec-foot"><span class="rec-when">${esc(recNextLabel(x))}</span><button class="rec-toggle" onclick="toggleRecActive('${x.id}')">${x.active?'Pause':'Resume'}</button></div>
-      </div>`).join('');
-    const add = !isMe ? '' : (recAddFor===k
+    const openSec = recSecOpen.has(k) || recAddFor===k;
+    const rows=mine.map(x=>{ const open=recOpen.has(x.id);
+      return `<div class="rec ${x.active?'':'paused'}">
+        <div class="rec-line" onclick="toggleRecOpen('${x.id}')">
+          <span class="rec-cav">${open?'▾':'▸'}</span>
+          <span class="rec-txt">${esc(x.text)}</span>
+          ${x.active?'':'<span class="rec-paused">paused</span>'}
+          <span class="rec-meta">${esc(recShort(x))}</span>
+        </div>
+        ${open?`<div class="rec-edit">
+          <div class="rec-cfg">every <input type="number" min="1" value="${x.interval}" onchange="setRecInterval('${x.id}',this.value)">
+            <select onchange="setRecFreq('${x.id}',this.value)">${['day','week','month'].map(u=>`<option value="${u}" ${x.freq===u?'selected':''}>${u}</option>`).join('')}</select>
+            <span class="rec-fld">due <input type="date" class="rec-date" value="${x.next||''}" onchange="setRecNext('${x.id}',this.value)"></span>
+            <span class="rec-lead">appear<input type="number" min="0" value="${x.lead||0}" onchange="setRecLead('${x.id}',this.value)">d before</span></div>
+          <div class="rec-foot"><span class="rec-when">${esc(recNextLabel(x))}</span>
+            <span class="rec-actions"><button class="rec-toggle" onclick="toggleRecActive('${x.id}')">${x.active?'Pause':'Resume'}</button><button class="rec-del" onclick="delRecurring('${x.id}')">Delete</button></span></div>
+        </div>`:''}
+      </div>`; }).join('');
+    const form = recAddFor===k
       ? `<div class="rec-add">
           <input id="recnew-${k}" placeholder="Recurring task…" onkeydown="if(event.key==='Enter')addRecurring('${k}'); else if(event.key==='Escape')cancelRecAdd()">
           <div class="rec-add-cfg">every <input type="number" id="recint-${k}" min="1" value="1">
@@ -1966,9 +1994,12 @@
             <span class="rec-fld">due <input type="date" id="recdate-${k}" class="rec-date" value="${new Date().toISOString().slice(0,10)}"></span>
             <span class="rec-lead">appear<input type="number" id="reclead-${k}" min="0" value="0">d before</span></div>
           <div class="rec-add-acts"><button class="rec-go" onclick="addRecurring('${k}')">Add repeat</button><button class="rec-cancel" onclick="cancelRecAdd()">Cancel</button></div>
-        </div>`
-      : `<button class="rec-new" onclick="startRecAdd('${k}')">🔁 Add recurring task</button>`);
-    return `<div class="recurring"><div class="rec-label">Recurring</div>${rows}${add}</div>`;
+        </div>` : '';
+    const head = `<div class="rec-head-row">
+        <button class="rec-head" onclick="toggleRecSec('${k}')"><span class="rec-hicon">🔁</span> Recurring${mine.length?` <span class="rec-count">${mine.length}</span>`:''} <span class="rec-cav">${openSec?'▾':'▸'}</span></button>
+        ${isMe?`<button class="rec-add-btn" title="Add recurring task" onclick="startRecAdd('${k}')">＋</button>`:''}
+      </div>`;
+    return `<div class="recurring">${head}${openSec?`<div class="rec-body">${rows}${form}</div>`:''}</div>`;
   }
   function renderActivity(){
     const body=document.getElementById('actBody'); if(!body) return;
