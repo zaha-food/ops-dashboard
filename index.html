@@ -1360,8 +1360,14 @@
     B.tasks.push(t); logB('added',t); return t;
   }
   function siblings(t){ return B.tasks.filter(x=>x.owner===t.owner && x.projectId===t.projectId && !x.done).sort((a,b)=>(a.order??0)-(b.order??0)); }
-  function moveUp(id){ const t=B.tasks.find(x=>x.id===id); if(!t)return; const s=siblings(t), i=s.findIndex(x=>x.id===id); if(i>0){ const o=s[i].order; s[i].order=s[i-1].order; s[i-1].order=o; saveB(); renderBoard(); } }
-  function moveDown(id){ const t=B.tasks.find(x=>x.id===id); if(!t)return; const s=siblings(t), i=s.findIndex(x=>x.id===id); if(i<s.length-1){ const o=s[i].order; s[i].order=s[i+1].order; s[i+1].order=o; saveB(); renderBoard(); } }
+  function sharedSiblings(t){ const p=B.projects.find(x=>x.id===t.projectId); const view=(_hasBoard&&p)?(p.view||'list'):'list';
+    let arr=B.tasks.filter(x=>x.projectId===t.projectId && !x.done);
+    if(view==='kanban') arr=arr.filter(x=>(x.status||'todo')===(t.status||'todo'));
+    else if(view==='workstream') arr=arr.filter(x=>(x.colId||null)===(t.colId||null));
+    return arr.sort((a,b)=>(a.order??0)-(b.order??0)); }
+  function reorderSibs(t){ return isShared(t)?sharedSiblings(t):siblings(t); }
+  function moveUp(id){ const t=B.tasks.find(x=>x.id===id); if(!t)return; const s=reorderSibs(t), i=s.findIndex(x=>x.id===id); if(i>0){ const o=s[i].order; s[i].order=s[i-1].order; s[i-1].order=o; saveB(); renderBoard(); } }
+  function moveDown(id){ const t=B.tasks.find(x=>x.id===id); if(!t)return; const s=reorderSibs(t), i=s.findIndex(x=>x.id===id); if(i<s.length-1){ const o=s[i].order; s[i].order=s[i+1].order; s[i+1].order=o; saveB(); renderBoard(); } }
   function addTask(owner){
     const inp=document.getElementById('add-'+owner); if(!inp) return;
     const text=(inp.value||'').trim(); if(!text) return;
@@ -1793,8 +1799,10 @@
       : (t.desc ? `<div class="task-desc" onclick="startDesc('${t.id}')" title="Click to edit">${esc(t.desc)}</div>` : '');
     const dueChip = t.due ? `<label class="due ${t.done?'muted':dueStatus(t)}">📅 ${dueLabel(t)}<input type="date" class="due-ovl" value="${t.due}" onchange="setDue('${t.id}',this.value)" aria-label="Change due date"></label><button class="due-clr" title="Clear date" onclick="clearDue('${t.id}')">×</button>` : '';
     let reorder='';
-    if(menuId===t.id && !t.done && !sharedTask){
-      if(sortModeFor(t.owner)==='manual'){ const s=siblings(t), i=s.findIndex(x=>x.id===t.id);
+    if(menuId===t.id && !t.done){
+      if(sharedTask){ const s=sharedSiblings(t), i=s.findIndex(x=>x.id===t.id);
+        reorder=`<button onclick="moveUp('${t.id}')" ${i<=0?'disabled':''}>↑ Up</button><button onclick="moveDown('${t.id}')" ${i>=s.length-1?'disabled':''}>↓ Down</button>`;
+      } else if(sortModeFor(t.owner)==='manual'){ const s=siblings(t), i=s.findIndex(x=>x.id===t.id);
         reorder=`<button onclick="moveUp('${t.id}')" ${i<=0?'disabled':''}>↑ Up</button><button onclick="moveDown('${t.id}')" ${i>=s.length-1?'disabled':''}>↓ Down</button>`;
       } else {
         reorder=`<button onclick="enableReorder('${t.id}')" title="Reordering needs Manual sort">↕ Reorder</button>`;
