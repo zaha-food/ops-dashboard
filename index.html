@@ -507,7 +507,9 @@
   .rec-txt{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto;min-width:0;}
   .rec-paused{flex:0 0 auto;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--warn);background:var(--warn-bg);border-radius:99px;padding:1px 6px;}
   .rec-meta{margin-left:auto;flex:0 0 auto;font-size:11px;color:var(--soft);white-space:nowrap;}
-  .rec-edit{padding:0 10px 10px;border-top:1px solid var(--line);}
+  .rec-edit{padding:10px;border-top:1px solid var(--line);}
+  .rec-title-edit{width:100%;font:inherit;font-size:13px;font-weight:600;color:var(--ink);border:1px solid var(--line2);border-radius:7px;padding:6px 9px;}
+  .rec-title-edit:focus{outline:none;border-color:var(--clay);}
   .rec-del{border:1px solid var(--line2);background:#fff;font:inherit;font-size:11px;font-weight:600;color:var(--soft);border-radius:6px;padding:3px 9px;cursor:pointer;}
   .rec-del:hover{color:var(--danger);border-color:var(--danger);}
   .rec-actions{display:inline-flex;gap:6px;}
@@ -1965,6 +1967,7 @@
     try{ const res=await sb.from('recurring').upsert(recurringToRow(x)); if(!res.error) _shadow.recurring.set(x.id, JSON.stringify(recurringToRow(x)));
          await sb.rpc('spawn_recurring'); }catch(e){}
   }
+  function setRecText(id,v){ const x=B.recurring.find(r=>r.id===id); if(!x) return; const nv=(v||'').trim(); if(nv&&nv!==x.text){ x.text=nv; logB('recurring_edit',{text:nv,owner:x.owner}); saveB(); renderBoard(); renderActivity(); } }
   function setRecFreq(id,v){ const x=B.recurring.find(r=>r.id===id); if(x){ x.freq=v; saveB(); renderBoard(); } }
   function setRecInterval(id,v){ const x=B.recurring.find(r=>r.id===id); if(x){ x.interval=Math.max(1,parseInt(v,10)||1); saveB(); renderBoard(); } }
   function setRecLead(id,v){ const x=B.recurring.find(r=>r.id===id); if(x){ x.lead=Math.max(0,parseInt(v,10)||0); saveB(); renderBoard(); } }
@@ -1986,6 +1989,7 @@
           <span class="rec-meta">${esc(recShort(x))}</span>
         </div>
         ${open?`<div class="rec-edit">
+          <input class="rec-title-edit" value="${esc(x.text)}" placeholder="Recurring task…" onchange="setRecText('${x.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
           <div class="rec-cfg">every <input type="number" min="1" value="${x.interval}" onchange="setRecInterval('${x.id}',this.value)">
             <select onchange="setRecFreq('${x.id}',this.value)">${['day','week','month'].map(u=>`<option value="${u}" ${x.freq===u?'selected':''}>${u}</option>`).join('')}</select>
             <span class="rec-fld">due <input type="date" class="rec-date" value="${x.next||''}" onchange="setRecNext('${x.id}',this.value)"></span>
@@ -2019,7 +2023,7 @@
       flagged:'flagged as blocked',unflagged:'cleared the flag on',
       assigned:'assigned',proj_due:'set the due date on',sharedproj_delete:'deleted the shared project',
       status:'set the status of',moved_col:'moved to a column',view_change:'switched the view of',proj_col:'updated columns of',
-      recurring_new:'set up a recurring task',recurring_del:'removed the recurring task',recurring_pause:'paused the recurring task',recurring_resume:'resumed the recurring task',recurring_add:'🔁 added the recurring task'};
+      recurring_new:'set up a recurring task',recurring_del:'removed the recurring task',recurring_pause:'paused the recurring task',recurring_resume:'resumed the recurring task',recurring_add:'🔁 added the recurring task',recurring_edit:'renamed a recurring task to'};
     const dayOf=ts=>{ const d=new Date(ts); d.setHours(0,0,0,0); const t=new Date(); t.setHours(0,0,0,0); const diff=Math.round((t-d)/86400000);
       if(diff===0) return 'Today'; if(diff===1) return 'Yesterday'; return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); };
     const entry=(a)=>{
