@@ -117,6 +117,21 @@
   .empty h4{margin:0 0 6px;font-size:16px;font-weight:600;}
   .empty p{margin:0 auto 20px;color:var(--soft);font-size:13.5px;max-width:38ch;}
   .tag{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--clay);background:var(--sand2);padding:3px 9px;border-radius:99px;font-weight:600;}
+  .dev-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start;}
+  .dev-grid .wide{grid-column:1/-1;}
+  @media(max-width:900px){.dev-grid{grid-template-columns:1fr;}}
+  .dev-code{font-size:34px;font-weight:700;letter-spacing:.14em;font-variant-numeric:tabular-nums;margin:14px 0 4px;}
+  .dev-note{font-size:13px;color:var(--soft);margin:0 0 14px;line-height:1.5;}
+  .dev-list{list-style:none;margin:16px 0 0;padding:0;border-top:1px solid var(--line);}
+  .dev-list li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .dev-list li .c{font-weight:600;letter-spacing:.1em;font-variant-numeric:tabular-nums;}
+  .dev-list li .m{color:var(--soft);font-size:12px;flex:1;}
+  .dev-pin{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .dev-pin input{width:120px;font:inherit;font-size:18px;letter-spacing:.3em;padding:9px 12px;border:1px solid var(--line2);border-radius:10px;}
+  .dev-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--soft);}
+  .dev-dot.on{background:#2c7a44;}
+  .dev-table td{padding:12px 22px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  .dev-table td.r{text-align:right;white-space:nowrap;}
   .banner{display:flex;gap:12px;align-items:center;background:#fff;border:1px dashed var(--line2);border-radius:12px;padding:14px 18px;color:var(--soft);font-size:13px;margin-bottom:24px;}
   .banner b{color:var(--ink);}
 
@@ -634,6 +649,7 @@
         <a data-view="staff" data-admin="1"><span class="ic">☺</span><span class="lbl">Staff &amp; Holiday</span></a>
         <a data-view="compliance" data-admin="1"><span class="ic">◈</span><span class="lbl">Compliance</span></a>
         <a data-view="documents" data-admin="1"><span class="ic">▤</span><span class="lbl">Documents</span></a>
+        <a data-view="devices" data-admin="1"><span class="ic">⌚</span><span class="lbl">Devices</span></a>
       </nav>
       <div class="foot">
         <div class="who" onclick="show('account')" title="Account settings"><div class="av" id="whoAv">·</div><div class="who-txt"><div class="nm" id="whoNm">—</div><div class="rl" id="whoRl">Founder</div></div></div>
@@ -789,6 +805,36 @@
             </div>
           </div>
         </section>
+        <!-- DEVICES -->
+        <section class="view" data-view="devices" hidden>
+          <div id="devErr"></div>
+          <div class="dev-grid">
+            <div class="panel">
+              <div class="ph"><h3>Pair an iPad with Timers</h3></div>
+              <div class="pb">
+                <p class="dev-note">Open <b>timers.zaha.food</b> on the iPad, then type a code from here. Each code works <b>once</b> and expires after <b>24 hours</b>. Nobody can see the timers without one.</p>
+                <button class="btn red" id="devGen" onclick="genTimerCode()">Generate a code</button>
+                <div id="devNew"></div>
+                <ul class="dev-list" id="devCodes"></ul>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="ph"><h3>Edit PIN</h3></div>
+              <div class="pb">
+                <p class="dev-note">Staff can run the timers freely. Changing, adding or deleting items on the iPad needs this 4-digit PIN. Five wrong tries locks Edit on that iPad for 10 minutes.</p>
+                <p class="dev-note" id="devPinStatus">Checking…</p>
+                <div class="dev-pin">
+                  <input id="devPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off" onkeydown="if(event.key==='Enter')saveTimerPin()">
+                  <button class="btn ghost" onclick="saveTimerPin()">Save PIN</button>
+                </div>
+              </div>
+            </div>
+            <div class="panel wide">
+              <div class="ph"><h3>Paired iPads</h3><button class="mini-btn" onclick="loadDevices()">↻ Refresh</button></div>
+              <table class="dev-table"><tbody id="devLinks"><tr><td>Loading…</td></tr></tbody></table>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   </div>
@@ -801,6 +847,7 @@
     staff:['Staff & Holiday','Track allowance, accrual and time taken'],
     compliance:['Compliance','Certificates & safety records — live expiry status'],
     documents:['Documents','Signed contracts, manuals & policies'],
+    devices:['Devices','Pair iPads and control the Timers screen'],
     account:['Account','Your profile & password']
   };
   function show(view){
@@ -809,7 +856,7 @@
     if(titles[view]){ document.getElementById('pageTitle').textContent=titles[view][0]; document.getElementById('pageSub').textContent=titles[view][1]; }
   }
   document.querySelectorAll('#nav a').forEach(a=>{ if(a.dataset.view) a.onclick=()=>navClick(a); });
-  function navClick(a){ if(a.classList.contains('locked')) return; show(a.dataset.view); if(a.dataset.view==='usage') loadUsage(); document.body.classList.remove('nav-pinned'); }
+  function navClick(a){ if(a.classList.contains('locked')) return; show(a.dataset.view); if(a.dataset.view==='usage') loadUsage(); if(a.dataset.view==='devices') loadDevices(); document.body.classList.remove('nav-pinned'); }
   function toggleNav(){ document.body.classList.toggle('nav-pinned'); }
   function applyAccess(){ document.querySelectorAll('#nav a[data-admin]').forEach(a=>a.classList.toggle('locked', !IS_ADMIN)); }
   /* real auth (enterApp / signOut) is defined in the Supabase section below */
@@ -1722,6 +1769,64 @@
   }
 
   /* ---- toast ---- */
+  /* ---------- DEVICES: pairing codes, paired iPads and the Edit PIN for timers.zaha.food ---------- */
+  const fmtCode = c => c.slice(0,4)+' '+c.slice(4);
+  function agoText(t){ const m=Math.round((Date.now()-new Date(t))/60000);
+    if(m<2) return 'just now'; if(m<60) return m+' min ago'; const h=Math.round(m/60); if(h<48) return h+' h ago'; return Math.round(h/24)+' days ago'; }
+  function devFail(e){
+    const el=document.getElementById('devErr');
+    el.innerHTML='<div class="banner">⚠ <div><b>Devices isn’t set up in the database yet.</b> Run <b>timers-access.sql</b> in Supabase, then refresh. ('+esc(e&&e.message||String(e))+')</div></div>';
+  }
+  async function loadDevices(){
+    document.getElementById('devErr').innerHTML='';
+    const now=new Date().toISOString();
+    const [codes, links, pin] = await Promise.all([
+      sb.from('timer_codes').select('id,code,created_at,expires_at').is('used_at',null).is('voided_at',null).gt('expires_at',now).order('created_at',{ascending:false}),
+      sb.from('timer_links').select('id,label,paired_at,last_seen,user_agent').eq('active',true).order('paired_at'),
+      sb.rpc('timer_pin_status')
+    ]);
+    if(codes.error||links.error||pin.error){ devFail(codes.error||links.error||pin.error); return; }
+    document.getElementById('devCodes').innerHTML = codes.data.map(c=>
+      '<li><span class="c">'+esc(fmtCode(c.code))+'</span><span class="m">unused · expires '+esc(new Date(c.expires_at).toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'}))+'</span>'+
+      '<button class="mini-btn" onclick="voidTimerCode(\''+c.id+'\')">Cancel</button></li>').join('');
+    document.getElementById('devLinks').innerHTML = links.data.length ? links.data.map(l=>{
+      const on = Date.now()-new Date(l.last_seen) < 15*60000;
+      return '<tr><td><b>'+esc(l.label)+'</b></td>'+
+        '<td><span class="dev-dot'+(on?' on':'')+'"></span>'+(on?'Online':'Last seen '+esc(agoText(l.last_seen)))+'</td>'+
+        '<td style="color:var(--soft)">Paired '+esc(new Date(l.paired_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}))+'</td>'+
+        '<td class="r"><button class="mini-btn" onclick="renameTimer(\''+l.id+'\',\''+esc(l.label).replace(/'/g,'')+'\')">Rename</button> '+
+        '<button class="mini-btn" onclick="revokeTimer(\''+l.id+'\',\''+esc(l.label).replace(/'/g,'')+'\')">Revoke</button></td></tr>';
+    }).join('') : '<tr><td style="color:var(--soft)">No iPads paired yet. Generate a code and enter it on the iPad.</td></tr>';
+    const p=pin.data||{};
+    document.getElementById('devPinStatus').innerHTML = p.set
+      ? '✓ PIN is set'+(p.at?' · changed '+esc(new Date(p.at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}))+(p.by?' by '+esc(p.by.split('@')[0]):''):'')+'. Type a new one to change it.'
+      : '<b style="color:var(--accent)">No PIN set yet</b> — nobody can use Edit on the iPad until you set one.';
+  }
+  async function genTimerCode(){
+    const b=document.getElementById('devGen'); b.disabled=true;
+    const { data, error } = await sb.rpc('timer_issue_code');
+    b.disabled=false;
+    if(error){ devFail(error); return; }
+    document.getElementById('devNew').innerHTML='<div class="dev-code">'+esc(fmtCode(data))+'</div><p class="dev-note">Type this on the iPad. It works once, until this time tomorrow.</p>';
+    loadDevices();
+  }
+  async function voidTimerCode(id){ const { error } = await sb.rpc('timer_void_code',{p_id:id}); if(error) return devFail(error); document.getElementById('devNew').innerHTML=''; loadDevices(); }
+  async function revokeTimer(id, label){
+    if(!confirm('Revoke "'+label+'"? It will lock and show the code screen the next time it checks in (within 10 minutes when online).')) return;
+    const { error } = await sb.rpc('timer_revoke',{p_id:id}); if(error) return devFail(error);
+    showToast(label+' revoked'); loadDevices();
+  }
+  async function renameTimer(id, label){
+    const n=prompt('Name this iPad (e.g. Till iPad)', label); if(n==null) return;
+    const { error } = await sb.rpc('timer_rename',{p_id:id, p_label:n}); if(error) return devFail(error); loadDevices();
+  }
+  async function saveTimerPin(){
+    const el=document.getElementById('devPin'), v=el.value.trim();
+    if(!/^\d{4}$/.test(v)){ showToast('The PIN must be 4 digits'); el.focus(); return; }
+    const { error } = await sb.rpc('timer_set_pin',{p_pin:v}); if(error) return devFail(error);
+    el.value=''; showToast('Edit PIN saved'); loadDevices();
+  }
+
   function showToast(msg, undoFn){
     const el=document.getElementById('toast'); if(!el) return;
     el.innerHTML = esc(msg) + (undoFn?' <span class="u" id="toastUndo">Undo</span>':'');
