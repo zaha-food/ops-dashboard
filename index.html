@@ -312,6 +312,10 @@
   .notes-rendered p{margin:0 0 10px;} .notes-rendered p:last-child{margin-bottom:0;}
   .notes-rendered ul,.notes-rendered ol{margin:0 0 10px;padding-left:22px;}
   .notes-rendered li{margin:3px 0;} .notes-rendered li.chk{list-style:none;margin-left:-18px;}
+  .notes-rendered li.chk .ck{cursor:pointer;user-select:none;display:inline-block;min-width:1.1em;margin-right:2px;}
+  .notes-rendered li.chk .ck:hover{color:var(--clay);}
+  .notes-rendered li.ckon{color:var(--soft);text-decoration:line-through;}
+  .notes-rendered li.ckon .ck{color:var(--ok);text-decoration:none;}
   .notes-rendered blockquote{margin:0 0 10px;padding:6px 14px;border-left:3px solid var(--line2);color:var(--soft);}
   .notes-rendered code{background:var(--sand2);border-radius:5px;padding:1px 5px;font-family:ui-monospace,Menlo,monospace;font-size:13px;}
   .notes-rendered a{color:var(--clay);text-decoration:underline;word-break:break-word;}
@@ -1618,6 +1622,10 @@
   function openSearch(){ const ov=document.getElementById('searchOverlay'); if(!ov) return; ov.classList.add('show'); document.body.classList.add('search-open'); const i=document.getElementById('searchInput'); if(i){ i.value=''; i.focus(); } runSearch(''); }
   function closeSearch(){ const ov=document.getElementById('searchOverlay'); if(ov) ov.classList.remove('show'); document.body.classList.remove('search-open'); }
   function pickSearch(id){ closeSearch(); openNotes(id); }
+  function toggleNoteCheck(idx){ const t=B.tasks.find(x=>x.id===notesTaskId); if(!t||!t.desc) return;
+    const lines=t.desc.split('\n'); let n=-1;
+    for(let i=0;i<lines.length;i++){ const m=lines[i].match(/^(\s*[-*]\s+\[)([ xX])(\].*)$/); if(m){ n++; if(n===idx){ lines[i]=m[1]+(m[2].trim()?' ':'x')+m[3]; break; } } }
+    t.desc=lines.join('\n'); logB('described',t); saveB(); renderNotes(); renderBoard(); renderActivity(); }
   function _hl(escd,q){ try{ const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig'); return escd.replace(re,'<mark>$1</mark>'); }catch(e){ return escd; } }
   function _ctxLabel(t){ if(t.projectId){ const p=B.projects.find(x=>x.id===t.projectId); if(p){ if(p.kind==='shared') return 'Shared · '+p.name; return (F[p.owner]?F[p.owner].n:p.owner)+' · '+p.name; } } return t.owner?(F[t.owner]?F[t.owner].n:t.owner):'Unassigned'; }
   function _noteSnip(desc,q){ const d=desc||''; const i=d.toLowerCase().indexOf(q); if(i<0) return ''; const start=Math.max(0,i-24); const seg=d.slice(start,start+72).replace(/\s+/g,' '); return (start>0?'…':'')+_hl(esc(seg),q)+'…'; }
@@ -1685,13 +1693,13 @@
       s=s.replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
       s=s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
       return s; };
-    let html='', list=null; const closeList=()=>{ if(list){ html+='</'+list+'>'; list=null; } };
+    let html='', list=null, ckIdx=0; const closeList=()=>{ if(list){ html+='</'+list+'>'; list=null; } };
     (src||'').replace(/\r/g,'').split('\n').forEach(raw=>{ const line=raw.replace(/\s+$/,''); let m;
       if(/^\s*$/.test(line)){ closeList(); return; }
       if(m=line.match(/^(#{1,3})\s+(.*)$/)){ closeList(); html+=`<div class="nh nh${m[1].length}">${inline(m[2])}</div>`; return; }
       if(/^(---|\*\*\*|___)\s*$/.test(line)){ closeList(); html+='<hr>'; return; }
       if(m=line.match(/^\s*>\s?(.*)$/)){ closeList(); html+=`<blockquote>${inline(m[1])}</blockquote>`; return; }
-      if(m=line.match(/^\s*[-*]\s+\[([ xX])\]\s+(.*)$/)){ if(list!=='ul'){ closeList(); html+='<ul>'; list='ul'; } html+=`<li class="chk">${m[1].trim()?'☑':'☐'} ${inline(m[2])}</li>`; return; }
+      if(m=line.match(/^\s*[-*]\s+\[([ xX])\]\s+(.*)$/)){ if(list!=='ul'){ closeList(); html+='<ul>'; list='ul'; } const on=!!m[1].trim(); const idx=ckIdx++; html+=`<li class="chk ${on?'ckon':''}"><span class="ck" onclick="toggleNoteCheck(${idx})">${on?'☑':'☐'}</span> ${inline(m[2])}</li>`; return; }
       if(m=line.match(/^\s*[-*]\s+(.*)$/)){ if(list!=='ul'){ closeList(); html+='<ul>'; list='ul'; } html+=`<li>${inline(m[1])}</li>`; return; }
       if(m=line.match(/^\s*\d+\.\s+(.*)$/)){ if(list!=='ol'){ closeList(); html+='<ol>'; list='ol'; } html+=`<li>${inline(m[1])}</li>`; return; }
       closeList(); html+=`<p>${inline(line)}</p>`;
