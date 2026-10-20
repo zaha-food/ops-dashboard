@@ -275,6 +275,8 @@
   /* card controls row (steps + due) — sits below the task, above the meta */
   .cardctl{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px;padding-left:29px;}
   .stepc{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--soft);font-weight:600;}
+  .noteschip{border:none;background:var(--sand2);color:var(--soft);border-radius:99px;padding:1px 7px;font-size:12px;cursor:pointer;line-height:1.5;flex:0 0 auto;}
+  .noteschip:hover{color:var(--ink);background:var(--line2);}
   .stepc.toggle{border:none;background:transparent;cursor:pointer;padding:1px 3px;border-radius:5px;font:inherit;font-size:10px;font-weight:600;color:var(--soft);line-height:1.2;}
   .stepc.toggle:hover{background:var(--sand2);color:var(--ink);}
   .task-desc{font-size:12px;color:var(--soft);line-height:1.45;margin:5px 0 0;padding-left:29px;cursor:pointer;white-space:pre-wrap;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
@@ -2134,7 +2136,7 @@
         <button class="menu-btn ${menuId===t.id?'on':''}" title="Actions" onclick="toggleMenu('${t.id}')">⋯</button>
       </div>
       ${descHtml}
-      <div class="metarow">${assigneeChip}${statusPill}${lanePill}${t.flagged?'<span class="flagchip" title="Blocked — awaiting something/someone">🚩</span>':''}${dueChip}${stepChip}<span class="meta">${metaLine(t)}</span></div>
+      <div class="metarow">${assigneeChip}${statusPill}${lanePill}${t.flagged?'<span class="flagchip" title="Blocked — awaiting something/someone">🚩</span>':''}${(t.desc&&t.desc.trim())?`<button class="noteschip" onclick="event.stopPropagation(); openNotes('${t.id}')" title="Open notes">📄</button>`:''}${dueChip}${stepChip}<span class="meta">${metaLine(t)}</span></div>
       ${subsHtml}
       ${menu}
       ${moveMenu}
