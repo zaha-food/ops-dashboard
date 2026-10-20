@@ -315,6 +315,29 @@
   .notes-rendered a{color:var(--clay);text-decoration:underline;word-break:break-word;}
   .notes-rendered hr{border:none;border-top:1px solid var(--line);margin:14px 0;}
   @media(max-width:560px){ .notes-doc{width:100vw;height:100vh;border-radius:0;} .notes-overlay{padding:0;} }
+  /* search (⌘K) */
+  .search-overlay{position:fixed;inset:0;z-index:70;display:none;align-items:flex-start;justify-content:center;padding:10vh 4vmin 4vmin;background:rgba(34,40,41,.45);backdrop-filter:blur(3px);}
+  .search-overlay.show{display:flex;}
+  .search-box{background:#fff;width:min(620px,96vw);max-height:76vh;border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden;}
+  .search-in{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);flex:0 0 auto;}
+  .search-ic{font-size:15px;opacity:.7;}
+  .search-in input{flex:1;min-width:0;border:none;outline:none;font:inherit;font-size:16px;color:var(--ink);background:transparent;}
+  .search-close{border:1px solid var(--line2);background:var(--sand);color:var(--soft);font:inherit;font-size:11px;font-weight:600;border-radius:6px;padding:3px 8px;cursor:pointer;flex:0 0 auto;}
+  .search-results{overflow-y:auto;padding:6px;min-height:0;}
+  .search-hint{padding:16px 14px;color:var(--soft);font-size:13px;text-align:center;}
+  .search-res{display:block;width:100%;text-align:left;border:none;background:transparent;cursor:pointer;padding:9px 11px;border-radius:9px;}
+  .search-res:hover{background:var(--sand2);}
+  .sr-top{display:flex;align-items:center;gap:8px;}
+  .sr-title{font-size:13.5px;font-weight:600;color:var(--ink);}
+  .sr-title.done{color:var(--soft);text-decoration:line-through;}
+  .sr-done{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ok);background:var(--ok-bg);border-radius:99px;padding:1px 6px;}
+  .sr-meta{font-size:11.5px;color:var(--soft);margin-top:2px;}
+  .sr-where{font-style:italic;}
+  .search-results mark, .notes-rendered mark{background:#ffe9a8;color:inherit;border-radius:3px;padding:0 1px;}
+  @media(max-width:560px){ .search-overlay{padding:6vh 0 0;} .search-box{width:100vw;max-height:94vh;border-radius:0;} }
+  /* human touch: completion flourish */
+  @keyframes cbpop{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(63,158,87,.4);} 40%{transform:scale(1.3);box-shadow:0 0 0 7px rgba(63,158,87,0);} 100%{transform:scale(1);box-shadow:0 0 0 0 rgba(63,158,87,0);}}
+  .cb.cb-pop{animation:cbpop .5s ease;}
   .task-desc:hover{color:var(--ink);}
   .desc-edit{display:block;width:calc(100% - 29px);margin:6px 0 0 29px;border:1px solid var(--accent);border-radius:8px;padding:7px 9px;font:inherit;font-size:12px;line-height:1.45;resize:vertical;}
   .desc-edit:focus{outline:none;}
@@ -743,6 +766,7 @@
               <span id="liveStatus" class="live-status" title="Live updates — tap to refresh now" onclick="resync()"></span>
               <span id="saveStatus" class="save-status"></span>
               <button id="expandToggle" class="mini-btn" onclick="toggleAllSubs()" style="display:none">Expand all</button>
+              <button class="mini-btn" onclick="openSearch()" title="Search (⌘K)">🔍 Search</button>
               <button class="mini-btn" onclick="openActivity()">🕑 Activity</button>
             </div>
           </div>
@@ -770,6 +794,13 @@
               <div class="notes-toolbar" id="notesToolbar"></div>
               <div class="notes-body" id="notesBody"></div>
               <div class="notes-foot" id="notesFoot"></div>
+            </div>
+          </div>
+          <!-- search (⌘K) -->
+          <div class="search-overlay" id="searchOverlay" onclick="if(event.target===this)closeSearch()">
+            <div class="search-box">
+              <div class="search-in"><span class="search-ic">🔍</span><input id="searchInput" placeholder="Search tasks and notes…  (⌘K)" oninput="runSearch(this.value)" onkeydown="if(event.key==='Escape')closeSearch()"><button class="search-close" onclick="closeSearch()">esc</button></div>
+              <div class="search-results" id="searchResults"></div>
             </div>
           </div>
         </section>
@@ -1056,6 +1087,7 @@
   let dueEditId=null, subAddId=null, skipSubBlur=false, moveMenuId=null, menuId=null;
   let subEditId=null, subDueId=null, skipSubEdit=false, descEditId=null, skipDescBlur=false;
   let notesTaskId=null, notesEdit=false, _notesSaveT=null;   // per-task full notes document
+  let _justDone=null;   // task just completed → brief celebratory flourish
   let projEditId=null, projAddFor=null, skipProjBlur=false, projDelId=null;
   const doneOpen = new Set();
   const projOpen = new Set();
@@ -1183,7 +1215,10 @@
   window.addEventListener('online',  ()=>{ _failedAt=0; setSaveStatus(); if(_ready) saveB(); });
   // date chips: a plain click doesn't open the calendar on desktop — showPicker() does (harmless where unsupported, e.g. iOS opens on tap anyway)
   document.addEventListener('click', function(e){ const t=e.target; if(t && t.classList && t.classList.contains('due-ovl')){ try{ t.showPicker(); }catch(err){} } });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && notesTaskId){ e.preventDefault(); closeNotes(); } });
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape'){ if(notesTaskId){ e.preventDefault(); closeNotes(); return; } const so=document.getElementById('searchOverlay'); if(so&&so.classList.contains('show')){ e.preventDefault(); closeSearch(); return; } }
+    if((e.metaKey||e.ctrlKey) && (e.key==='k'||e.key==='K')){ e.preventDefault(); const so=document.getElementById('searchOverlay'); if(so&&so.classList.contains('show')) closeSearch(); else openSearch(); }
+  });
   function scheduleRetry(){ if(_retryT) return; _retryT=setTimeout(()=>{ _retryT=null; if(_ready) saveB(); }, 4000); }
   function saveFail(where, error){ const msg=(error&&error.message)||'check your connection'; console.warn('SAVE FAIL', where, error); _failedAt=Date.now(); setSaveStatus(); scheduleRetry(); showToast('⚠ Not saved — '+msg); }
   function _track(p, where){ _pending++; setSaveStatus();
@@ -1495,9 +1530,16 @@
   function toggleDone(id){
     const t=B.tasks.find(x=>x.id===id); if(!t) return;
     t.done=!t.done;
-    if(t.done){ t.doneAt=Date.now(); t.doneBy=B.me; logB('completed',t); const _c=B.activity[0]; if(_c) _c.snapshot={taskId:t.id}; }  // remember which task, so it can be un-completed from Activity
+    if(t.done){ t.doneAt=Date.now(); t.doneBy=B.me; logB('completed',t); const _c=B.activity[0]; if(_c) _c.snapshot={taskId:t.id};
+      _justDone=t.id; setTimeout(()=>{ _justDone=null; }, 800); celebrateIfCleared(t); }  // remember which task (restore) + a little flourish
     else { t.doneAt=null; t.doneBy=null; logB('reopened',t); }
     saveB(); renderBoard(); renderActivity();
+  }
+  function celebrateIfCleared(t){
+    let remain;
+    if(t.projectId){ remain=B.tasks.filter(x=>!x.done && x.projectId===t.projectId).length; }   // shared or personal project
+    else { remain=B.tasks.filter(x=>!x.done && x.owner===t.owner && x.projectId==null).length; } // a founder's quick tasks
+    if(remain===0){ const m=['🎉 All clear here — nice one!','✨ That’s the lot — all done!','🙌 List cleared!']; showToast(m[Math.floor(Math.random()*m.length)]); }
   }
   function startEdit(id){ editingId=id; renderBoard(); }
   function cancelEdit(){ skipBlur=true; editingId=null; renderBoard(); }
@@ -1570,6 +1612,30 @@
     renderBoard();
   }
   // task description (a note; not a completable subtask)
+  /* ---- search (⌘K): every task title, note & subtask ---- */
+  function openSearch(){ const ov=document.getElementById('searchOverlay'); if(!ov) return; ov.classList.add('show'); document.body.classList.add('search-open'); const i=document.getElementById('searchInput'); if(i){ i.value=''; i.focus(); } runSearch(''); }
+  function closeSearch(){ const ov=document.getElementById('searchOverlay'); if(ov) ov.classList.remove('show'); document.body.classList.remove('search-open'); }
+  function pickSearch(id){ closeSearch(); openNotes(id); }
+  function _hl(escd,q){ try{ const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig'); return escd.replace(re,'<mark>$1</mark>'); }catch(e){ return escd; } }
+  function _ctxLabel(t){ if(t.projectId){ const p=B.projects.find(x=>x.id===t.projectId); if(p){ if(p.kind==='shared') return 'Shared · '+p.name; return (F[p.owner]?F[p.owner].n:p.owner)+' · '+p.name; } } return t.owner?(F[t.owner]?F[t.owner].n:t.owner):'Unassigned'; }
+  function _noteSnip(desc,q){ const d=desc||''; const i=d.toLowerCase().indexOf(q); if(i<0) return ''; const start=Math.max(0,i-24); const seg=d.slice(start,start+72).replace(/\s+/g,' '); return (start>0?'…':'')+_hl(esc(seg),q)+'…'; }
+  function runSearch(q){
+    const res=document.getElementById('searchResults'); if(!res) return;
+    q=(q||'').trim().toLowerCase();
+    if(!q){ res.innerHTML='<div class="search-hint">Type to search every task title, note and subtask.</div>'; return; }
+    const hits=[];
+    B.tasks.forEach(t=>{ const title=(t.text||'').toLowerCase(), note=(t.desc||'').toLowerCase(), subs=(t.subs||[]).map(s=>s.text||'').join(' ').toLowerCase();
+      let where=null; if(title.includes(q)) where='title'; else if(note.includes(q)) where='note'; else if(subs.includes(q)) where='subtask';
+      if(where) hits.push({t,where}); });
+    hits.sort((a,b)=>(a.t.done?1:0)-(b.t.done?1:0));
+    if(!hits.length){ res.innerHTML='<div class="search-hint">No matches for “'+esc(q)+'”.</div>'; return; }
+    res.innerHTML=hits.slice(0,40).map(({t,where})=>{
+      const snip = where==='note' ? _noteSnip(t.desc,q) : (where==='subtask' ? '<span class="sr-where">matches a subtask</span>' : '');
+      return `<button class="search-res" onclick="pickSearch('${t.id}')">
+        <div class="sr-top"><span class="sr-title${t.done?' done':''}">${_hl(esc(t.text),q)}</span>${t.done?'<span class="sr-done">done</span>':''}</div>
+        <div class="sr-meta">${esc(_ctxLabel(t))}${snip?' · '+snip:''}</div></button>`;
+    }).join('') + (hits.length>40?`<div class="search-hint">Showing first 40 of ${hits.length}.</div>`:'');
+  }
   /* ---- per-task notes document (reuses the task's description field) ---- */
   function openNotes(id){ const t=B.tasks.find(x=>x.id===id); if(!t) return; menuId=null; notesTaskId=id; notesEdit=!(t.desc&&t.desc.trim());
     const ov=document.getElementById('notesOverlay'); if(ov) ov.classList.add('show'); document.body.classList.add('notes-open'); renderNotes(); }
@@ -2063,7 +2129,7 @@
     const laneMenu = laneMenuId===t.id ? `<div class="move-menu"><span class="mm-label">Move to column</span><button class="mm-opt" onclick="setLane('${t.id}','')">General</button>${(sp&&sp.columns||[]).map(c=>`<button class="mm-opt" onclick="setLane('${t.id}','${c.id}')">${esc(c.name)}</button>`).join('')}<button class="mm-cancel" onclick="closeLane()">Cancel</button></div>` : '';
     return `<div class="task ${t.done?'done':''} ${t.flagged?'flagged':''}" draggable="${sharedTask?'false':'true'}" data-id="${t.id}" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
       <div class="row1">
-        <div class="cb" onclick="toggleDone('${t.id}')">${t.done?'✓':''}</div>
+        <div class="cb ${_justDone===t.id?'cb-pop':''}" onclick="toggleDone('${t.id}')">${t.done?'✓':''}</div>
         <div class="tx">${esc(t.text)}</div>
         <button class="menu-btn ${menuId===t.id?'on':''}" title="Actions" onclick="toggleMenu('${t.id}')">⋯</button>
       </div>
