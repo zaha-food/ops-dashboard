@@ -391,6 +391,13 @@
   /* shared projects */
   .shared-wrap{margin-bottom:26px;}
   .shared-hd{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--clay);font-weight:600;margin-bottom:12px;}
+  .archived-sec{margin-top:14px;border-top:1px dashed var(--line2);padding-top:12px;}
+  .archived-hd{display:inline-flex;align-items:center;gap:7px;border:none;background:transparent;cursor:pointer;font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);font-weight:700;padding:2px 0;}
+  .archived-hd .rec-cav{color:var(--line2);font-size:9px;}
+  .proj.shared.archived{opacity:.74;}
+  .proj.shared.archived .proj-head{color:var(--soft);}
+  .arch-tag{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--soft);background:var(--sand2);border-radius:99px;padding:1px 7px;}
+  .proj-unarchive{color:var(--clay);font-weight:600;}
   .shared-note{font-size:13px;color:var(--soft);background:#fff;border:1px dashed var(--line2);border-radius:12px;padding:14px 18px;}
   .shared-new{max-width:280px;}
   .shared-filter{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;margin-bottom:10px;}
@@ -1004,6 +1011,7 @@
   const sharedOpen = new Set();   // expanded shared projects
   const sharedMine = new Set();   // "Mine" filter per shared project
   let sharedAddOpen = false;      // creating a new shared project
+  let archivedOpen = false;       // the Archived shared-projects section is expanded
   let recAddFor = null;           // founder key whose "add recurring" form is open
   const recSecOpen = new Set();   // founder keys whose Recurring section is expanded
   const recOpen = new Set();      // recurring recipe ids expanded for editing
@@ -1076,15 +1084,15 @@
   const toISO = ms => ms ? new Date(ms).toISOString() : null;
   function taskToRow(t){ const r={ id:t.id, owner:t.owner, project_id:t.projectId||null, text:t.text, done:!!t.done, flagged:!!t.flagged, due:t.due||null, subs:t.subs||[], sort_order:(t.order??0), created_at:toISO(t.createdAt), created_by:t.createdBy||null, done_at:toISO(t.doneAt), done_by:t.doneBy||null }; if(_hasDesc) r.description=t.desc||null; if(_hasBoard){ r.status=t.status||'todo'; r.col_id=t.colId||null; } return r; }
   const rowToTask = r => ({ id:r.id, owner:r.owner, projectId:r.project_id||null, text:r.text, done:!!r.done, flagged:!!r.flagged, due:r.due||null, subs:Array.isArray(r.subs)?r.subs:[], order:r.sort_order??0, createdAt:r.created_at?new Date(r.created_at).getTime():Date.now(), createdBy:r.created_by||null, doneAt:r.done_at?new Date(r.done_at).getTime():null, doneBy:r.done_by||null, desc:r.description||null, status:r.status||'todo', colId:r.col_id||null });
-  function projectToRow(p){ const r={ id:p.id, owner:p.owner, name:p.name }; if(_hasShared){ r.kind=p.kind||'individual'; r.due=p.due||null; } if(_hasBoard){ r.view=p.view||'list'; r.columns=Array.isArray(p.columns)?p.columns:[]; } return r; }
-  const rowToProject = r => ({ id:r.id, owner:r.owner, name:r.name, kind:r.kind||'individual', due:r.due||null, view:r.view||'list', columns:Array.isArray(r.columns)?r.columns:[] });
+  function projectToRow(p){ const r={ id:p.id, owner:p.owner, name:p.name }; if(_hasShared){ r.kind=p.kind||'individual'; r.due=p.due||null; } if(_hasBoard){ r.view=p.view||'list'; r.columns=Array.isArray(p.columns)?p.columns:[]; } if(_hasArchive) r.archived=!!p.archived; return r; }
+  const rowToProject = r => ({ id:r.id, owner:r.owner, name:r.name, kind:r.kind||'individual', due:r.due||null, view:r.view||'list', columns:Array.isArray(r.columns)?r.columns:[], archived:!!r.archived });
   function recurringToRow(x){ return { id:x.id, owner:x.owner, project_id:x.projectId||null, text:x.text, description:x.desc||null, freq:x.freq||'week', interval_n:x.interval||1, next_due:x.next||null, lead_days:x.lead||0, active:x.active!==false, created_by:x.createdBy||null }; }
   const rowToRecurring = r => ({ id:r.id, owner:r.owner, projectId:r.project_id||null, text:r.text, desc:r.description||null, freq:r.freq||'week', interval:r.interval_n||1, next:r.next_due||null, lead:r.lead_days||0, active:r.active!==false, createdBy:r.created_by||null });
   function isShared(t){ if(!t.projectId) return false; const p=B.projects.find(x=>x.id===t.projectId); return !!(p && p.kind==='shared'); }
   const activityToRow = a => ({ id:a.id, ts:toISO(a.ts), actor:a.actor, verb:a.verb, text:a.text||null, owner:a.owner||null, detail:a.detail||null, snapshot:a.snapshot||null, restored:!!a.restored });
   const rowToActivity = r => ({ id:r.id, ts:r.ts?new Date(r.ts).getTime():Date.now(), actor:r.actor, verb:r.verb, text:r.text, owner:r.owner, detail:r.detail, snapshot:r.snapshot, restored:!!r.restored });
 
-  let _ready=false, _subbed=false, _hasDesc=false, _hasShared=false, _hasBoard=false, _hasRecurring=false;
+  let _ready=false, _subbed=false, _hasDesc=false, _hasShared=false, _hasBoard=false, _hasRecurring=false, _hasArchive=false;
   const _shadow = { projects:new Map(), tasks:new Map(), activity:new Map(), recurring:new Map() };
   let _pending=0, _failedAt=0, _retryT=null;
   let _live=false, _lastSync=0, _liveTick=null, _resyncing=false;
@@ -1349,6 +1357,7 @@
     ME=me; USER_EMAIL=user.email||''; B.me=me.key; IS_ADMIN=!!me.is_admin;
     try{ const pr=await sb.from('tasks').select('description').limit(1); _hasDesc=!pr.error; }catch(e){ _hasDesc=false; }
     try{ const pk=await sb.from('projects').select('kind').limit(1); _hasShared=!pk.error; }catch(e){ _hasShared=false; }
+    try{ const ak=await sb.from('projects').select('archived').limit(1); _hasArchive=!ak.error; }catch(e){ _hasArchive=false; }
     try{ const bk=await sb.from('tasks').select('status').limit(1); _hasBoard=!bk.error; }catch(e){ _hasBoard=false; }
     try{ const rk=await sb.from('recurring').select('id').limit(1); _hasRecurring=!rk.error; }catch(e){ _hasRecurring=false; }
     if(_hasRecurring){ try{ await sb.rpc('spawn_recurring'); }catch(e){} }   // catch up any due occurrences the moment someone opens the app
@@ -1608,6 +1617,9 @@
   }
   function setSharedDue(pid,val){ const p=B.projects.find(x=>x.id===pid); if(!p) return; p.due=val||null; logB('proj_due',{text:p.name,owner:p.owner}, val?('due '+new Date(val+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})):'cleared'); saveB(); renderBoard(); renderActivity(); }
   function askDeleteShared(id){ projDelId=id; renderBoard(); }
+  function archiveProject(id){ const p=B.projects.find(x=>x.id===id); if(!p) return; p.archived=true; sharedOpen.delete(id); logB('proj_archive',{text:p.name,owner:p.owner}); saveB(); renderBoard(); renderActivity(); showToast('Project archived', ()=>unarchiveProject(id)); }
+  function unarchiveProject(id){ const p=B.projects.find(x=>x.id===id); if(!p) return; p.archived=false; archivedOpen=true; logB('proj_unarchive',{text:p.name,owner:p.owner}); saveB(); renderBoard(); renderActivity(); }
+  function toggleArchivedSec(){ archivedOpen=!archivedOpen; renderBoard(); }
   function deleteSharedProject(id){
     const p=B.projects.find(x=>x.id===id); if(!p) return;
     const tasks=B.tasks.filter(t=>t.projectId===id).map(t=>JSON.parse(JSON.stringify(t)));
@@ -1630,7 +1642,9 @@
   function renderShared(){
     const el=document.getElementById('sharedSection'); if(!el) return;
     if(!_hasShared){ el.innerHTML = IS_ADMIN ? `<div class="shared-wrap"><div class="shared-note">Run the shared-projects setup SQL to enable this section.</div></div>` : ''; return; }
-    const shared=B.projects.filter(p=>p.kind==='shared').sort((a,b)=>a.name.localeCompare(b.name));
+    const allShared=B.projects.filter(p=>p.kind==='shared').sort((a,b)=>a.name.localeCompare(b.name));
+    const shared=allShared.filter(p=>!p.archived);
+    const archived=allShared.filter(p=>p.archived);
     const viewPick = _hasBoard ? `<div class="view-pick">
         <button class="${sharedView==='kanban'?'on':''}" onclick="setCreateView('kanban')">▦ Kanban<small>To do · Doing · Blocked · Done</small></button>
         <button class="${sharedView==='workstream'?'on':''}" onclick="setCreateView('workstream')">▤ Workstream<small>your own named columns</small></button>
@@ -1638,7 +1652,11 @@
     const newCtrl = sharedAddOpen
       ? `<div class="newproj shared-create"><input id="newshared" placeholder="Shared project name…" onkeydown="if(event.key==='Enter')createShared(); else if(event.key==='Escape')cancelShared()">${viewPick}<div class="sc-acts"><button class="sc-go" onclick="createShared()">Create project</button><button class="sc-cancel" onclick="cancelShared()">Cancel</button></div></div>`
       : `<button class="proj-new shared-new" onclick="startShared()">＋ New shared project</button>`;
-    el.innerHTML = `<div class="shared-wrap"><div class="shared-hd">Shared projects</div>${shared.map(renderSharedProject).join('')}${newCtrl}</div>`;
+    const archivedBlock = archived.length ? `<div class="archived-sec">
+        <button class="archived-hd" onclick="toggleArchivedSec()">🗄 Archived <span class="rec-count">${archived.length}</span> <span class="rec-cav">${archivedOpen?'▾':'▸'}</span></button>
+        ${archivedOpen? archived.map(renderSharedProject).join(''):''}
+      </div>` : '';
+    el.innerHTML = `<div class="shared-wrap"><div class="shared-hd">Shared projects</div>${shared.map(renderSharedProject).join('')}${newCtrl}${archivedBlock}</div>`;
     if(sharedAddOpen){ const i=document.getElementById('newshared'); if(i) i.focus(); }
   }
   function renderSharedProject(p){
@@ -1654,17 +1672,20 @@
     const showGlobalAdd = view!=='workstream';
     const addRow = showGlobalAdd ? `<div class="addrow proj-add"><input id="adds-${p.id}" placeholder="${view==='kanban'?'Add task to “To do”…':'Add task to project…'}" onkeydown="if(event.key==='Enter')addSharedTask('${p.id}','','adds-${p.id}')"><button onclick="addSharedTask('${p.id}','','adds-${p.id}')">+</button></div>` : '';
     const vsw = _hasBoard ? `<span class="view-switch">${['list','kanban','workstream'].map(v=>`<button class="${view===v?'on':''}" onclick="setSharedView('${p.id}','${v}')">${VLABEL[v]}</button>`).join('')}</span>` : '';
+    const isArchived=!!p.archived;
     const acts = projDelId===p.id
       ? `<div class="proj-confirm"><div class="pc-q">Delete “${esc(p.name)}”?</div><button class="pc-all" onclick="deleteSharedProject('${p.id}')">Delete project${total?' + '+total+' task'+(total>1?'s':''):''}</button><button class="pc-cancel" onclick="cancelDeleteProject()">Cancel</button></div>`
-      : `<div class="proj-acts"><label class="cmi">📅 ${p.due?'Change due':'Add due'}<input type="date" class="due-ovl" value="${p.due||''}" onchange="setSharedDue('${p.id}',this.value)"></label><button onclick="startRenameProject('${p.id}')">Rename</button><button onclick="askDeleteShared('${p.id}')">Delete project</button></div>`;
+      : isArchived
+        ? `<div class="proj-acts"><button class="proj-unarchive" onclick="unarchiveProject('${p.id}')">↩ Unarchive</button><button onclick="askDeleteShared('${p.id}')">Delete project</button></div>`
+        : `<div class="proj-acts"><label class="cmi">📅 ${p.due?'Change due':'Add due'}<input type="date" class="due-ovl" value="${p.due||''}" onchange="setSharedDue('${p.id}',this.value)"></label><button onclick="startRenameProject('${p.id}')">Rename</button>${_hasArchive?`<button onclick="archiveProject('${p.id}')">Archive</button>`:''}<button onclick="askDeleteShared('${p.id}')">Delete project</button></div>`;
     const body = open ? `<div class="proj-body">
         <div class="shared-topbar"><div class="shared-filter"><button class="${!mineOn?'on':''}" onclick="setSharedMine('${p.id}',false)">All</button><button class="${mineOn?'on':''}" onclick="setSharedMine('${p.id}',true)">Mine</button></div>${vsw}</div>
         ${viewBody}
         ${addRow}
         ${acts}
       </div>` : '';
-    return `<div class="proj shared">
-      <div class="proj-head" onclick="toggleShared('${p.id}')"><span class="proj-toggle">${open?'▾':'▸'}</span>${nameCell}${dueLbl}<span class="proj-cnt">${dc}/${total}</span></div>
+    return `<div class="proj shared ${isArchived?'archived':''}">
+      <div class="proj-head" onclick="toggleShared('${p.id}')"><span class="proj-toggle">${open?'▾':'▸'}</span>${nameCell}${isArchived?'<span class="arch-tag">Archived</span>':''}${dueLbl}<span class="proj-cnt">${dc}/${total}</span></div>
       <div class="proj-prog"><i style="width:${pct}%"></i></div>
       ${body}
     </div>`;
@@ -2124,7 +2145,7 @@
     const VB={added:'added',completed:'completed',reopened:'reopened',edited:'edited',deleted:'deleted',moved:'moved',restored:'restored',
       due_set:'set the due date on',due_clear:'cleared the due date on',
       substep_add:'added a subtask to',substep_done:'checked off a subtask in',substep_reopen:'reopened a subtask in',substep_del:'removed a subtask from',substep_edit:'edited a subtask in',substep_due:'set a subtask due date in',described:'updated the note on',
-      proj_add:'created the project',proj_rename:'renamed the project to',proj_delete:'deleted the project',
+      proj_add:'created the project',proj_rename:'renamed the project to',proj_delete:'deleted the project',proj_archive:'archived the shared project',proj_unarchive:'un-archived the shared project',
       flagged:'flagged as blocked',unflagged:'cleared the flag on',
       assigned:'assigned',proj_due:'set the due date on',sharedproj_delete:'deleted the shared project',
       status:'set the status of',moved_col:'moved to a column',view_change:'switched the view of',proj_col:'updated columns of',
