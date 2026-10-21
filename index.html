@@ -427,7 +427,11 @@
   .projects.first{margin-top:4px;border-top:none;padding-top:0;}
   .quick-sec{margin-top:16px;border-top:1px solid var(--line);padding-top:13px;}
   .proj-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);font-weight:600;margin-bottom:9px;padding-left:2px;}
-  .proj{background:#fff;border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:8px;}
+  .proj{background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 11px;margin-bottom:5px;}
+  .proj.open{padding:9px 12px;margin-bottom:8px;}
+  .proj-mini{flex:0 0 32px;height:4px;border-radius:99px;background:var(--line2);overflow:hidden;position:relative;}
+  .proj-mini::after{content:"";position:absolute;left:0;top:0;bottom:0;width:var(--pct);background:var(--ok);border-radius:99px;}
+  .proj.open .proj-mini{display:none;}
   .proj-head{display:flex;align-items:center;gap:8px;cursor:pointer;}
   .proj-toggle{font-size:11px;color:var(--soft);width:12px;flex:0 0 12px;text-align:center;}
   .proj-name{font-size:13px;font-weight:600;flex:1;word-break:break-word;line-height:1.3;}
@@ -2194,9 +2198,10 @@
       <div class="proj-head" onclick="toggleProj('${p.id}')">
         <span class="proj-toggle">${open?'▾':'▸'}</span>
         ${nameCell}
+        <span class="proj-mini" style="--pct:${pct}%" title="${pct}% done"></span>
         <span class="proj-cnt">${dc}/${total}</span>
       </div>
-      <div class="proj-prog"><i style="width:${pct}%"></i></div>
+      ${open?`<div class="proj-prog"><i style="width:${pct}%"></i></div>`:''}
       ${body}
     </div>`;
   }
