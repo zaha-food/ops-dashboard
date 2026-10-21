@@ -424,6 +424,8 @@
 
   /* individual projects */
   .projects{margin-top:14px;border-top:1px solid var(--line);padding-top:13px;}
+  .projects.first{margin-top:4px;border-top:none;padding-top:0;}
+  .quick-sec{margin-top:16px;border-top:1px solid var(--line);padding-top:13px;}
   .proj-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);font-weight:600;margin-bottom:9px;padding-left:2px;}
   .proj{background:#fff;border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:8px;}
   .proj-head{display:flex;align-items:center;gap:8px;cursor:pointer;}
@@ -2228,19 +2230,22 @@
           <span class="cnt">${dc}/${total}</span>
         </div>
         <div class="col-prog"><i style="width:${pct}%"></i></div>
-        ${sortCtrl}
-        <div class="addrow">
-          <input id="add-${f.k}" placeholder="Quick task…" onkeydown="if(event.key==='Enter')addTask('${f.k}')">
-          <button onclick="addTask('${f.k}')">+</button>
-        </div>
-        <div class="tasks">${looseActiveHtml}</div>
-        ${looseDoneHtml}
-        ${emptyHint}
-        <div class="projects">
+        <div class="projects first">
           <div class="proj-label">Projects</div>
           ${projects.map(renderProject).join('')}
           ${newProjHtml}
         </div>
+        <div class="quick-sec">
+          <div class="proj-label">Quick tasks</div>
+          ${sortCtrl}
+          <div class="addrow">
+            <input id="add-${f.k}" placeholder="Quick task…" onkeydown="if(event.key==='Enter')addTask('${f.k}')">
+            <button onclick="addTask('${f.k}')">+</button>
+          </div>
+          <div class="tasks">${looseActiveHtml}</div>
+          ${looseDoneHtml}
+        </div>
+        ${emptyHint}
         ${renderRecurringSection(f.k)}
       </div>`;
     }).join('');
