@@ -1763,6 +1763,11 @@
     const fromProj=t.projectId; t.projectId=projId; t.status=t.status||'todo'; t.colId=null; sharedOpen.add(projId);
     logB('moved_to_shared',{text:t.text,owner:t.owner}, p.name); saveB(); renderBoard(); renderActivity();
     showToast('Moved to “'+p.name+'”', ()=>{ t.projectId=fromProj; logB('moved',{text:t.text,owner:t.owner}); saveB(); renderBoard(); renderActivity(); }); }
+  function moveOutToList(taskId, owner){ moveMenuId=null; const t=B.tasks.find(x=>x.id===taskId); if(!t) return;
+    const fromProj=t.projectId, fromOwner=t.owner; if(fromProj==null && fromOwner===owner) return;
+    t.projectId=null; t.owner=owner; t.colId=null;
+    logB('moved',t,(fromOwner||'')+'→'+owner); saveB(); renderBoard(); renderActivity();
+    showToast('Moved to '+(F[owner]?F[owner].n:owner)+'’s list', ()=>{ t.projectId=fromProj; t.owner=fromOwner; logB('moved',t); saveB(); renderBoard(); renderActivity(); }); }
 
   /* ---- shared projects (cross-founder) ---- */
   function startShared(){ if(!_hasShared){ showToast('Run the shared-projects setup SQL first'); return; } sharedAddOpen=true; renderBoard(); }
@@ -2145,8 +2150,26 @@
         <button onclick="pickAct('${t.id}','edit')">✎ Edit</button>
         <button class="del" onclick="pickAct('${t.id}','delete')">✕ Delete</button>
       </div>` : '';
-    const sharedMoveBlock = (!sharedTask) ? (function(){ const sp=B.projects.filter(p=>p.kind==='shared'&&!p.archived).sort((a,b)=>a.name.localeCompare(b.name)); return sp.length ? `<span class="mm-label mm-sep">To a shared project</span>`+sp.map(p=>`<button class="mm-opt" onclick="moveToShared('${t.id}','${p.id}')">▦ ${esc(p.name)}</button>`).join('') : ''; })() : '';
-    const moveMenu = moveMenuId===t.id ? `<div class="move-menu"><span class="mm-label">${sharedTask?'Assign to':'Move to'}</span>${FOUNDERS.filter(f=>f.k!==t.owner).map(f=>`<button class="mm-opt" onclick="doMove('${t.id}','${f.k}')"><span class="av" style="background:${f.c};color:${textOn(f.c)}">${f.n[0]}</span>${f.n}</button>`).join('')}${sharedTask&&t.owner?`<button class="mm-opt mm-unassign" onclick="doMove('${t.id}','')">Unassign</button>`:''}${sharedMoveBlock}<button class="mm-cancel" onclick="closeMove()">Cancel</button></div>` : '';
+    let moveMenu='';
+    if(moveMenuId===t.id){
+      const av=f=>`<span class="av" style="background:${f.c};color:${textOn(f.c)}">${f.n[0]}</span>`;
+      const otherShared=B.projects.filter(p=>p.kind==='shared'&&!p.archived&&p.id!==t.projectId).sort((a,b)=>a.name.localeCompare(b.name));
+      const sharedProjOpts=otherShared.length?`<span class="mm-label mm-sep">To a shared project</span>`+otherShared.map(p=>`<button class="mm-opt" onclick="moveToShared('${t.id}','${p.id}')">▦ ${esc(p.name)}</button>`).join(''):'';
+      let inner;
+      if(sharedTask){
+        inner=`<span class="mm-label">Assign to</span>`
+          +FOUNDERS.filter(f=>f.k!==t.owner).map(f=>`<button class="mm-opt" onclick="assignTask('${t.id}','${f.k}')">${av(f)}${f.n}</button>`).join('')
+          +(t.owner?`<button class="mm-opt mm-unassign" onclick="assignTask('${t.id}','')">Unassign</button>`:'')
+          +`<span class="mm-label mm-sep">Move to a list</span>`
+          +FOUNDERS.map(f=>`<button class="mm-opt" onclick="moveOutToList('${t.id}','${f.k}')">${av(f)}${f.n}</button>`).join('')
+          +sharedProjOpts;
+      } else {
+        inner=`<span class="mm-label">Move to</span>`
+          +FOUNDERS.filter(f=>f.k!==t.owner).map(f=>`<button class="mm-opt" onclick="doMove('${t.id}','${f.k}')">${av(f)}${f.n}</button>`).join('')
+          +sharedProjOpts;
+      }
+      moveMenu=`<div class="move-menu">${inner}<button class="mm-cancel" onclick="closeMove()">Cancel</button></div>`;
+    }
     const statusMenu = stMenuId===t.id ? `<div class="move-menu st-menu"><span class="mm-label">Set status</span>${['todo','doing','blocked'].map(s=>`<button class="mm-opt" onclick="setStatus('${t.id}','${s}')"><span class="stdot st-${s}"></span>${STLABEL[s]}</button>`).join('')}<button class="mm-opt" onclick="setStatus('${t.id}','done')"><span class="stdot st-done">✓</span>Done</button><button class="mm-cancel" onclick="closeStatus()">Cancel</button></div>` : '';
     const laneMenu = laneMenuId===t.id ? `<div class="move-menu"><span class="mm-label">Move to column</span><button class="mm-opt" onclick="setLane('${t.id}','')">General</button>${(sp&&sp.columns||[]).map(c=>`<button class="mm-opt" onclick="setLane('${t.id}','${c.id}')">${esc(c.name)}</button>`).join('')}<button class="mm-cancel" onclick="closeLane()">Cancel</button></div>` : '';
     return `<div class="task ${t.done?'done':''} ${t.flagged?'flagged':''}" draggable="${sharedTask?'false':'true'}" data-id="${t.id}" ondragstart="taskDragStart(event,'${t.id}')" ondragend="taskDragEnd(event)">
