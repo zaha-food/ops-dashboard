@@ -499,6 +499,19 @@
   .view-switch button.on{background:var(--clay);color:#fff;}
   /* kanban */
   .kanban,.workstream{display:flex;gap:12px;align-items:flex-start;overflow-x:auto;padding-bottom:4px;}
+  /* hill chart */
+  .hill-wrap{padding:4px 0 2px;}
+  .hill-stage{position:relative;width:100%;background:linear-gradient(180deg,var(--sand) 0%,#fff 100%);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .hill-svg{position:absolute;inset:0;width:100%;height:100%;}
+  .hill-labels{position:absolute;left:0;right:0;bottom:6px;display:flex;justify-content:space-between;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--soft);font-weight:600;padding:0 12px;pointer-events:none;}
+  .hill-dot{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;cursor:grab;touch-action:none;white-space:nowrap;z-index:2;}
+  .hill-dot.dragging{z-index:6;cursor:grabbing;}
+  .hill-dot.right{flex-direction:row-reverse;}
+  .hd-pt{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:700;box-shadow:0 1px 4px rgba(34,40,41,.3);flex:0 0 auto;}
+  .hill-dot.dragging .hd-pt{transform:scale(1.12);}
+  .hd-lbl{font-size:11px;font-weight:600;color:var(--ink);background:rgba(255,255,255,.88);border-radius:5px;padding:0 5px;max-width:130px;overflow:hidden;text-overflow:ellipsis;}
+  .hill-dot.done{opacity:.5;} .hill-dot.done .hd-lbl{text-decoration:line-through;}
+  .hill-empty{font-size:12.5px;color:var(--soft);text-align:center;padding:12px 10px 4px;}
   .kan-col{flex:1 1 0;min-width:190px;background:var(--sand);border:1px solid var(--line);border-radius:12px;padding:8px;}
   .kan-hd{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--soft);padding:2px 4px 8px;cursor:pointer;}
   .kan-hd .kan-cap{color:var(--line2);font-size:10px;}
@@ -1121,7 +1134,7 @@
   let stMenuId = null, laneMenuId = null;   // status / column pick menus
   let colAddFor = null, colRenameId = null; // workstream column editing
   const STLABEL = { todo:'To do', doing:'Doing', blocked:'Blocked' };
-  const VLABEL  = { list:'☰ List', kanban:'▦ Board', workstream:'▤ Streams' };
+  const VLABEL  = { list:'☰ List', kanban:'▦ Board', workstream:'▤ Streams', hill:'⛰ Hill' };
   // sort is per founder-column (each person sorts their own list)
   let sortByCol = (function(){ try{ return JSON.parse(localStorage.getItem('zaha_sortcols'))||{}; }catch(e){ return {}; } })();
   function sortModeFor(k){ return sortByCol[k]||'manual'; }
@@ -1180,8 +1193,8 @@
      realtime pulls other founders' changes back in.
      ============================================================ */
   const toISO = ms => ms ? new Date(ms).toISOString() : null;
-  function taskToRow(t){ const r={ id:t.id, owner:t.owner, project_id:t.projectId||null, text:t.text, done:!!t.done, flagged:!!t.flagged, due:t.due||null, subs:t.subs||[], sort_order:(t.order??0), created_at:toISO(t.createdAt), created_by:t.createdBy||null, done_at:toISO(t.doneAt), done_by:t.doneBy||null }; if(_hasDesc) r.description=t.desc||null; if(_hasBoard){ r.status=t.status||'todo'; r.col_id=t.colId||null; } return r; }
-  const rowToTask = r => ({ id:r.id, owner:r.owner, projectId:r.project_id||null, text:r.text, done:!!r.done, flagged:!!r.flagged, due:r.due||null, subs:Array.isArray(r.subs)?r.subs:[], order:r.sort_order??0, createdAt:r.created_at?new Date(r.created_at).getTime():Date.now(), createdBy:r.created_by||null, doneAt:r.done_at?new Date(r.done_at).getTime():null, doneBy:r.done_by||null, desc:r.description||null, status:r.status||'todo', colId:r.col_id||null });
+  function taskToRow(t){ const r={ id:t.id, owner:t.owner, project_id:t.projectId||null, text:t.text, done:!!t.done, flagged:!!t.flagged, due:t.due||null, subs:t.subs||[], sort_order:(t.order??0), created_at:toISO(t.createdAt), created_by:t.createdBy||null, done_at:toISO(t.doneAt), done_by:t.doneBy||null }; if(_hasDesc) r.description=t.desc||null; if(_hasBoard){ r.status=t.status||'todo'; r.col_id=t.colId||null; } if(_hasHill) r.hill=(typeof t.hill==='number'?t.hill:null); return r; }
+  const rowToTask = r => ({ id:r.id, owner:r.owner, projectId:r.project_id||null, text:r.text, done:!!r.done, flagged:!!r.flagged, due:r.due||null, subs:Array.isArray(r.subs)?r.subs:[], order:r.sort_order??0, createdAt:r.created_at?new Date(r.created_at).getTime():Date.now(), createdBy:r.created_by||null, doneAt:r.done_at?new Date(r.done_at).getTime():null, doneBy:r.done_by||null, desc:r.description||null, status:r.status||'todo', colId:r.col_id||null, hill:(r.hill==null?null:r.hill) });
   function projectToRow(p){ const r={ id:p.id, owner:p.owner, name:p.name }; if(_hasShared){ r.kind=p.kind||'individual'; r.due=p.due||null; } if(_hasBoard){ r.view=p.view||'list'; r.columns=Array.isArray(p.columns)?p.columns:[]; } if(_hasArchive) r.archived=!!p.archived; return r; }
   const rowToProject = r => ({ id:r.id, owner:r.owner, name:r.name, kind:r.kind||'individual', due:r.due||null, view:r.view||'list', columns:Array.isArray(r.columns)?r.columns:[], archived:!!r.archived });
   function recurringToRow(x){ return { id:x.id, owner:x.owner, project_id:x.projectId||null, text:x.text, description:x.desc||null, freq:x.freq||'week', interval_n:x.interval||1, next_due:x.next||null, lead_days:x.lead||0, active:x.active!==false, created_by:x.createdBy||null }; }
@@ -1190,7 +1203,7 @@
   const activityToRow = a => ({ id:a.id, ts:toISO(a.ts), actor:a.actor, verb:a.verb, text:a.text||null, owner:a.owner||null, detail:a.detail||null, snapshot:a.snapshot||null, restored:!!a.restored });
   const rowToActivity = r => ({ id:r.id, ts:r.ts?new Date(r.ts).getTime():Date.now(), actor:r.actor, verb:r.verb, text:r.text, owner:r.owner, detail:r.detail, snapshot:r.snapshot, restored:!!r.restored });
 
-  let _ready=false, _subbed=false, _hasDesc=false, _hasShared=false, _hasBoard=false, _hasRecurring=false, _hasArchive=false;
+  let _ready=false, _subbed=false, _hasDesc=false, _hasShared=false, _hasBoard=false, _hasRecurring=false, _hasArchive=false, _hasHill=false;
   const _shadow = { projects:new Map(), tasks:new Map(), activity:new Map(), recurring:new Map() };
   let _pending=0, _failedAt=0, _retryT=null;
   let _live=false, _lastSync=0, _liveTick=null, _resyncing=false;
@@ -1461,6 +1474,7 @@
     try{ const pk=await sb.from('projects').select('kind').limit(1); _hasShared=!pk.error; }catch(e){ _hasShared=false; }
     try{ const ak=await sb.from('projects').select('archived').limit(1); _hasArchive=!ak.error; }catch(e){ _hasArchive=false; }
     try{ const bk=await sb.from('tasks').select('status').limit(1); _hasBoard=!bk.error; }catch(e){ _hasBoard=false; }
+    try{ const hk=await sb.from('tasks').select('hill').limit(1); _hasHill=!hk.error; }catch(e){ _hasHill=false; }
     try{ const rk=await sb.from('recurring').select('id').limit(1); _hasRecurring=!rk.error; }catch(e){ _hasRecurring=false; }
     if(_hasRecurring){ try{ await sb.rpc('spawn_recurring'); }catch(e){} }   // catch up any due occurrences the moment someone opens the app
     await loadAll();
@@ -1869,15 +1883,15 @@
     const pt=B.tasks.filter(t=>t.projectId===p.id);
     const total=pt.length, dc=pt.filter(t=>t.done).length, pct=total?Math.round(dc/total*100):0;
     const open=sharedOpen.has(p.id), mineOn=sharedMine.has(p.id);
-    const view=viewFor(p);
+    let view=viewFor(p); if(view==='hill' && !_hasHill) view='list';
     const nameCell = projEditId===p.id
       ? `<input class="proj-rename" data-id="${p.id}" value="${esc(p.name)}" onclick="event.stopPropagation()" onkeydown="event.stopPropagation(); if(event.key==='Enter')commitRenameProject('${p.id}',this.value); else if(event.key==='Escape')cancelRenameProject()" onblur="commitRenameProject('${p.id}',this.value)">`
       : `<span class="proj-name">${esc(p.name)}</span>`;
     const dueLbl = p.due ? `<span class="due ${dueStatus({due:p.due,done:false})}" style="pointer-events:none">📅 ${dueLabel({due:p.due,done:false})}</span>` : '';
-    const viewBody = view==='kanban' ? kanbanBody(p) : view==='workstream' ? workstreamBody(p) : listBody(p);
+    const viewBody = view==='kanban' ? kanbanBody(p) : view==='workstream' ? workstreamBody(p) : view==='hill' ? hillBody(p) : listBody(p);
     const showGlobalAdd = view!=='workstream';
     const addRow = showGlobalAdd ? `<div class="addrow proj-add"><input id="adds-${p.id}" placeholder="${view==='kanban'?'Add task to “To do”…':'Add task to project…'}" onkeydown="if(event.key==='Enter')addSharedTask('${p.id}','','adds-${p.id}')"><button onclick="addSharedTask('${p.id}','','adds-${p.id}')">+</button></div>` : '';
-    const vsw = _hasBoard ? `<span class="view-switch">${['list','kanban','workstream'].map(v=>`<button class="${view===v?'on':''}" onclick="setSharedView('${p.id}','${v}')">${VLABEL[v]}</button>`).join('')}</span>` : '';
+    const vsw = _hasBoard ? `<span class="view-switch">${['list','kanban','workstream'].concat(_hasHill?['hill']:[]).map(v=>`<button class="${view===v?'on':''}" onclick="setSharedView('${p.id}','${v}')">${VLABEL[v]}</button>`).join('')}</span>` : '';
     const isArchived=!!p.archived;
     const acts = projDelId===p.id
       ? `<div class="proj-confirm"><div class="pc-q">Delete “${esc(p.name)}”?</div><button class="pc-all" onclick="deleteSharedProject('${p.id}')">Delete project${total?' + '+total+' task'+(total>1?'s':''):''}</button><button class="pc-cancel" onclick="cancelDeleteProject()">Cancel</button></div>`
@@ -1897,6 +1911,34 @@
     </div>`;
   }
   function sharedTasksOf(p){ let pt=B.tasks.filter(t=>t.projectId===p.id); if(sharedMine.has(p.id)) pt=pt.filter(t=>t.owner===B.me); return pt; }
+  /* ---- hill chart view (Basecamp-style: figuring it out → making it happen) ---- */
+  const HILLW=1000, HILLH=240, HILLA=160, HILLBASE=HILLH-30;
+  function hillCurveY(pos){ return HILLBASE - Math.sin(pos/100*Math.PI)*HILLA; }
+  function hillPos(t){ if(typeof t.hill==='number') return t.hill; if(t.done) return 100; return ({todo:12,doing:60,blocked:38})[t.status||'todo'] ?? 20; }
+  function hillBody(p){
+    const pt=sharedTasksOf(p).slice().sort((a,b)=>hillPos(a)-hillPos(b));
+    let d='M0,'+HILLBASE; for(let x=0;x<=100;x+=1.25){ d+=' L'+(x/100*HILLW).toFixed(1)+','+hillCurveY(x).toFixed(1); }
+    const dots=pt.map(t=>{ const pos=hillPos(t), x=pos/100*HILLW, y=hillCurveY(pos); const f=F[t.owner]; const color=f?f.c:'#b9b2a7';
+      return `<div class="hill-dot ${t.done?'done':''} ${pos>62?'right':''}" style="left:${(x/HILLW*100).toFixed(2)}%;top:${(y/HILLH*100).toFixed(2)}%;" onpointerdown="startHillDrag(event,'${t.id}')" title="${esc(t.text)} — ${t.done?'done':(pos<50?'figuring it out':'making it happen')}">
+        <span class="hd-pt" style="background:${color};color:${textOn(color)}">${t.done?'✓':(f?esc(f.n[0]):'+')}</span>
+        <span class="hd-lbl">${esc(t.text)}</span></div>`; }).join('');
+    const empty = pt.length?'':`<div class="hill-empty">Add tasks below, then drag each one along the hill as it moves from figuring-it-out to done.</div>`;
+    return `<div class="hill-wrap"><div class="hill-stage" style="aspect-ratio:${HILLW}/${HILLH};">
+        <svg class="hill-svg" viewBox="0 0 ${HILLW} ${HILLH}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="var(--line2)" stroke-width="2.5" stroke-linejoin="round"/><line x1="${HILLW/2}" y1="${HILLBASE}" x2="${HILLW/2}" y2="${(hillCurveY(50)-8).toFixed(1)}" stroke="var(--line2)" stroke-width="1.5" stroke-dasharray="5 5"/></svg>
+        <div class="hill-labels"><span>◂ Figuring it out</span><span>Making it happen ▸</span></div>
+        ${dots}
+      </div>${empty}</div>`;
+  }
+  function startHillDrag(e, taskId){
+    e.preventDefault(); const dot=e.currentTarget; const stage=dot.closest('.hill-stage'); if(!stage) return;
+    const rect=stage.getBoundingClientRect();
+    try{ dot.setPointerCapture(e.pointerId); }catch(_){}
+    dot.classList.add('dragging'); dot._moved=false;
+    const move=(ev)=>{ let xp=(ev.clientX-rect.left)/rect.width*100; xp=Math.max(0,Math.min(100,xp)); dot.style.left=xp+'%'; dot.style.top=(hillCurveY(xp)/HILLH*100)+'%'; dot._hill=xp; dot._moved=true; };
+    const up=()=>{ try{ dot.releasePointerCapture(e.pointerId); }catch(_){} dot.classList.remove('dragging'); dot.removeEventListener('pointermove',move); dot.removeEventListener('pointerup',up); dot.removeEventListener('pointercancel',up);
+      if(dot._moved && typeof dot._hill==='number'){ const t=B.tasks.find(x=>x.id===taskId); if(t){ t.hill=Math.round(dot._hill); saveB(); renderBoard(); } } };
+    dot.addEventListener('pointermove',move); dot.addEventListener('pointerup',up); dot.addEventListener('pointercancel',up);
+  }
   function listBody(p){
     const pt=sharedTasksOf(p), mineOn=sharedMine.has(p.id);
     const active=pt.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0));
