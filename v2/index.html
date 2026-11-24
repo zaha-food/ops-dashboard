@@ -876,9 +876,9 @@ aside.side:hover .nav .grp, body.nav-pinned .nav .grp{opacity:1;}
         <a data-view="building"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg></span><span class="lbl">Tasks &amp; projects</span></a>
         <div class="grp">Business</div>
         <a data-view="sales"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V14M10 20V8M16 20v-9M22 20V4"/></svg></span><span class="lbl">Sales</span></a>
-        <a data-view="finance"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg></span><span class="lbl">Finance</span></a>
         <div class="grp">Operations</div>
         <a data-view="compliance"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><span class="lbl">Compliance</span></a>
+        <a data-view="cameras"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11l5-3v8l-5-3"/></svg></span><span class="lbl">Cameras</span></a>
         <a data-view="devices" data-admin="1"><span class="ic"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M11 18h2"/></svg></span><span class="lbl">Devices</span></a>
         <div class="grp">People</div>
         <a data-view="staff"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17.5" cy="9" r="2.2"/><path d="M16 14.2a5 5 0 0 1 6 4.8"/></svg></span><span class="lbl">Team &amp; holiday</span></a>
@@ -910,6 +910,14 @@ aside.side:hover .nav .grp, body.nav-pinned .nav .grp{opacity:1;}
         <!-- FINANCE -->
         <section class="view" data-view="finance" hidden>
           <div class="cc-empty"><b>Finance connects to QuickBooks next.</b>Profit &amp; loss, food and labour costs, cash and bills coming up — pulled from QuickBooks so you don’t have to open it. Sales already has a home: log days and import statements on the <a style="color:var(--accent);cursor:pointer" onclick="show('sales')">Sales page</a>.</div>
+        </section>
+        <!-- CAMERAS -->
+        <section class="view" data-view="cameras" hidden>
+          <div class="cc-grid cc-2">
+            <div class="cc-card"><h3>Holborn · Camera 1</h3><div style="aspect-ratio:16/9;border-radius:10px;background:var(--sand2);display:grid;place-items:center;color:var(--mute);font-size:13px">Not connected yet</div></div>
+            <div class="cc-card"><h3>Holborn · Camera 2</h3><div style="aspect-ratio:16/9;border-radius:10px;background:var(--sand2);display:grid;place-items:center;color:var(--mute);font-size:13px">Not connected yet</div></div>
+          </div>
+          <div class="cc-empty" style="margin-top:16px"><b>Connecting your Nest cameras</b>Once the Google Home account is linked, each camera shows here with a <i>View live</i> button and motion alerts. Only founders can see this page.</div>
         </section>
         <!-- OVERVIEW -->
         <section class="view" data-view="overview">
@@ -1108,6 +1116,7 @@ aside.side:hover .nav .grp, body.nav-pinned .nav .grp{opacity:1;}
 
 <script>
   const titles = {
+    cameras:['Cameras','Live view of each site'],
     today:['Today','What needs you, and how the business is doing'],
     sales:['Sales','Every channel in one place'],
     finance:['Finance','Profit, costs and cash'],
